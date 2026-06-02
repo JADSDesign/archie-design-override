@@ -9,7 +9,7 @@
   var BASE_URL = 'https://jadsdesign.github.io/archie-design-override/override/';
   var _reskinTimer;
   var AO_FIELD_ATTR = 'data-ao-id';
-  var _currentCfg = null;
+  var _currentCfg = null; // used by startObserver (Task 5) to re-apply on DOM mutations
 
   // Measured Archie defaults — used by the "Huidig" reset button.
   var ORIGINAL = {
@@ -131,13 +131,14 @@
       var uid = vInput.dataset.aoId;
 
       // Hide the native .v-input.
-      vInput.style.display = 'none';
+      vInput.style.display = 'none'; // redundant with buildAOResetCSS, maar garandeert hide vóór style-tag geladen is
 
       // Build .ao-field.
       var aoField = document.createElement('div');
       aoField.className = 'ao-field';
       aoField.setAttribute('data-variant', variant);
       aoField.setAttribute('data-label-pos', labelPos);
+      // floating: CSS-gedrag (label zweeft omhoog bij focus) wordt geïmplementeerd in Task 3 CSS
       aoField.setAttribute('data-size', size);
       aoField.setAttribute('data-ao-source-id', uid);
 
