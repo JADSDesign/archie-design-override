@@ -7,6 +7,7 @@
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
   var BASE_URL = 'https://jadsdesign.github.io/archie-design-override/override/';
+  var _reskinTimer;
 
   // Measured Archie defaults — used by the "Huidig" reset button.
   var ORIGINAL = {
@@ -26,6 +27,7 @@
   // ── IIFE guard — second click removes everything and exits ──────────────
   var existingPanel = document.getElementById(PANEL_ID);
   if (existingPanel) {
+    // Relies on function-declaration hoisting: removeLabels is defined below.
     removeLabels();
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
@@ -114,8 +116,8 @@
     var radiusDecl = '  border-radius: ' + radiusValue + ' !important;';
 
     if (variant === 'outlined') {
-      // full border, fill = fillColor or white
-      bg = fill;
+      // full border, transparent background (differs from outlined-filled)
+      bg = 'transparent';
       borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
     } else if (variant === 'outlined-filled') {
       // full border + fillColor
@@ -149,7 +151,7 @@
       '  min-height: ' + height + 'px !important;',
       '  box-shadow: none !important;',
       '}',
-      // Sensible padding on the native input for the chosen height.
+      // Zero vertical padding on the native input; height is driven by min-height.
       '.v-field__input {',
       '  color: ' + textColor + ' !important;',
       '  padding-top: 0 !important;',
@@ -199,6 +201,14 @@
 
       // DEDUP — reuse an existing .reskin-label in this .v-input if present.
       var labelEl = input.querySelector('.reskin-label');
+
+      // Skip empty labels: if there's no text (and no persisted fallback) and
+      // no label was previously injected, don't insert an empty block. If a
+      // label was previously injected but text is now empty, leave it as-is.
+      if (!text && !labelEl) {
+        return;
+      }
+
       if (!labelEl) {
         labelEl = document.createElement('div');
         labelEl.className = 'reskin-label';
@@ -209,16 +219,16 @@
       if (pos === 'left' || pos === 'links') {
         labelEl.classList.add('reskin-label-fixed');
         input.classList.add('reskin-input-left');
-        input.insertBefore(labelEl, input.firstChild);
+        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
       } else if (pos === 'right' || pos === 'rechts') {
         labelEl.classList.add('reskin-label-fixed');
         input.classList.add('reskin-input-right');
-        input.insertBefore(labelEl, input.firstChild);
+        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
       } else {
         // top / boven (default)
         labelEl.classList.remove('reskin-label-fixed');
         input.classList.add('reskin-input-top');
-        input.insertBefore(labelEl, input.firstChild);
+        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
       }
     });
   }
@@ -790,7 +800,8 @@
         });
       });
       if (hasNewField) {
-        setTimeout(function () {
+        clearTimeout(_reskinTimer);
+        _reskinTimer = setTimeout(function () {
           applyConfig(sidebar.getConfig());
         }, 80);
       }
