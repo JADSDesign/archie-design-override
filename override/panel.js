@@ -713,8 +713,36 @@
     return { el: aside, getConfig: getConfig, setConfig: setConfig, open: open, close: close, toggle: toggle };
   }
 
+  // ── applyAOTokens — set CSS custom properties from config ────────────────
+  function applyAOTokens(cfg) {
+    var root = document.documentElement;
+
+    root.style.setProperty('--ao-border-color', cfg.borderColor || '#B3C0DD');
+    root.style.setProperty('--ao-fill', cfg.fillColor || '#FFFFFF');
+    root.style.setProperty('--ao-label-color', cfg.labelColor || '#464646');
+    root.style.setProperty('--ao-text-color', cfg.textColor || '#1A1A2E');
+    root.style.setProperty('--ao-stroke', (cfg.strokeWidth || 1) + 'px');
+
+    // Calculate --ao-radius-top based on radiusPos
+    var radiusValue = cfg.radius || 8;
+    var radiusPos = cfg.radiusPos || 'beide';
+    var radiusTop = '0px';
+    var radiusBottom = '0px';
+
+    if (radiusPos === 'boven' || radiusPos === 'beide') {
+      radiusTop = radiusValue + 'px';
+    }
+    if (radiusPos === 'beneden' || radiusPos === 'beide') {
+      radiusBottom = radiusValue + 'px';
+    }
+
+    root.style.setProperty('--ao-radius-top', radiusTop);
+    root.style.setProperty('--ao-radius-bottom', radiusBottom);
+  }
+
   // ── applyConfig — shared apply path for handleChange + observer ─────────
   function applyConfig(cfg) {
+    applyAOTokens(cfg);
     injectStyle(buildAOResetCSS());
     injectAOFields(cfg);
   }
