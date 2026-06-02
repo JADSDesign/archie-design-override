@@ -295,6 +295,9 @@
       }
     }
 
+    // Reachable from setConfig so it can toggle the custom-height slider wrapper.
+    var customHeightWrap = null;
+
     var aside = el('aside', 'config-sidebar');
     aside.id = 'config-sidebar-' + id;
     aside.setAttribute('aria-hidden', 'true');
@@ -409,7 +412,6 @@
         inp.addEventListener('change', function () {
           _cfg.radiusPos = opt.value;
           chipsRow.style.display = opt.value === 'geen' ? 'none' : 'flex';
-          if (opt.value === 'geen') _cfg.radius = 0;
           _notify();
         });
         lbl.appendChild(inp);
@@ -456,7 +458,7 @@
       var SIZE_VALUES = ['compact', 'standard', 'large', 'custom'];
       var segBtns = [];
 
-      var customHeightWrap = document.createElement('div');
+      customHeightWrap = document.createElement('div');
       customHeightWrap.style.display = (_cfg.size === 'custom') ? 'block' : 'none';
       customHeightWrap.style.marginTop = '10px';
 
@@ -747,6 +749,10 @@
         btn.classList.toggle('active', labelMap[btn.textContent] === _cfg.size);
       });
 
+      if (customHeightWrap) {
+        customHeightWrap.style.display = (_cfg.size === 'custom') ? 'block' : 'none';
+      }
+
       aside.querySelectorAll('.config-radius-pill').forEach(function (pill) {
         pill.classList.toggle('active', Number(pill.textContent) === _cfg.radius);
       });
@@ -775,10 +781,15 @@
     return { el: aside, getConfig: getConfig, setConfig: setConfig, open: open, close: close, toggle: toggle };
   }
 
-  // ── onChange wiring ─────────────────────────────────────────────────────
-  function handleChange(cfg) {
+  // ── applyConfig — shared apply path for handleChange + observer ─────────
+  function applyConfig(cfg) {
     applyVariantClasses(cfg.variant);
     injectStyle(buildCSSFromConfig(cfg));
+  }
+
+  // ── onChange wiring ─────────────────────────────────────────────────────
+  function handleChange(cfg) {
+    applyConfig(cfg);
   }
 
   // ── startObserver ───────────────────────────────────────────────────────
@@ -794,9 +805,7 @@
       });
       if (hasNewField) {
         setTimeout(function () {
-          var cfg = sidebar.getConfig();
-          applyVariantClasses(cfg.variant);
-          injectStyle(buildCSSFromConfig(cfg));
+          applyConfig(sidebar.getConfig());
         }, 80);
       }
     });

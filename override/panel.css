@@ -145,7 +145,6 @@
 }
 
 /* Radius pills */
-#archie-override-panel .config-radius-pills,
 #archie-override-panel .config-radius-chips {
   display: flex;
   flex-wrap: wrap;
@@ -235,29 +234,6 @@
 
 #archie-override-panel .config-toggle input:checked ~ .config-toggle-thumb {
   left: 16px;
-}
-
-/* Config open button (section-level) */
-#archie-override-panel .config-open-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg-white);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-mid);
-  cursor: pointer;
-  font-family: var(--font);
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-#archie-override-panel .config-open-btn:hover {
-  border-color: var(--primary-border);
-  color: var(--primary);
-  background: var(--primary-bg);
 }
 
 /* Config segmented bar (size selector) */
