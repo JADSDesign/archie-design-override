@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 — 2026-06-02
+- Phase 3R revision: **`rf-wrap` label injection** + **`makeReskinField()` factory** for standalone field creation
+- **Replaced** `injectLabels(cfg)` with `injectFieldWrappers(cfg)` — wraps each `.v-input` in `.rf-wrap` container; label injected as sibling (not child), fixing layout conflicts with Vuetify internals in modal forms and icon-prefixed fields
+- **Added** `makeReskinField(cfg)` — standalone pure-HTML field factory (ES5), returns `.rf-root` element with full variant/labelPos/radius/size support; no DOM injection, suitable for runtime field creation outside the observer
+- **CSS fix** — added `.v-autocomplete .v-field__input { min-height: auto }` in `buildShellCSS` to prevent autocomplete height overflow
+- **Removed** dead `.reskin-*` CSS classes from v1.1.0 (`.reskin-label`, `.reskin-label-fixed`, `.reskin-input-*`)
+- **Added** new `.rf-*` styles to `panel.css`: `.rf-wrap` (container), `.rf-label` (injected label), `.rf-root` (factory element), `.rf-control` (input wrapper), `.rf-input` (native input), scoped under `#archie-override-panel`
+- Synced `override/panel.{js,css}` → `docs/override/` (byte-identical)
+
 ## v1.1.0 — 2026-06-02
 - Phase 3R: **reskin architecture** replaces the v1.0.0 CSS-override apply layer
 - The class-swap + override-on-Vuetify-internals approach failed (double borders, broken radius, impossible label position). Replaced the entire apply layer; kept `makeConfigSidebar`, all panel sections, `injectStyle`, `setConfig`, the IIFE guard, and `window._archieObserver`.

@@ -1,8 +1,8 @@
 // Archie Design Override — full control panel
-// v1.1.0
+// v1.2.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '1.1.0';
+  var VERSION = '1.2.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
@@ -27,8 +27,8 @@
   // ── IIFE guard — second click removes everything and exits ──────────────
   var existingPanel = document.getElementById(PANEL_ID);
   if (existingPanel) {
-    // Relies on function-declaration hoisting: removeLabels is defined below.
-    removeLabels();
+    // Relies on function-declaration hoisting: removeFieldWrappers is defined below.
+    removeFieldWrappers();
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
     if (existingStyle) existingStyle.parentNode.removeChild(existingStyle);
@@ -157,26 +157,33 @@
       '  padding-top: 0 !important;',
       '  padding-bottom: 0 !important;',
       '  min-height: ' + height + 'px !important;',
-      '}'
+      '}',
+      // Prevent autocomplete fields from breaking due to the min-height above.
+      '.v-autocomplete .v-field__input { min-height: auto !important; }'
     ];
 
     return lines.join('\n');
   }
 
-  // ── injectLabels — inject our own label per labelPos (3R.B1) ─────────────
-  function injectLabels(cfg) {
+  // ── injectFieldWrappers — wrap each .v-input with .rf-wrap + external label ─
+  // Replaces the old injectLabels approach. Instead of inserting elements INTO
+  // .v-input (which conflicts with Vuetify's internal flex/grid layout), we
+  // wrap the .v-input in a new .rf-wrap sibling container and place the label
+  // OUTSIDE .v-input as a flex sibling. This preserves Vuetify's internal DOM.
+  function injectFieldWrappers(cfg) {
+    removeFieldWrappers();              // tear down first, always
     var pos = (cfg && cfg.labelPos) || 'top';
+    if (pos === 'floating') { return; } // floating = Vuetify's own label, done
     var labelColor = (cfg && cfg.labelColor) || '#464646';
     var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
 
     inputs.forEach(function (input) {
-      // SKIP search inputs.
+      // Skip search inputs.
       if (input.className && input.className.indexOf('search-input-wrapper') !== -1) {
         return;
       }
 
-      // Read label text from the native .v-label, persist on the .v-input so it
-      // survives if Vuetify later empties .v-label.
+      // Read label text from native .v-label; persist on .v-input for resilience.
       var nativeLabel = input.querySelector('.v-label');
       var text = '';
       if (nativeLabel && nativeLabel.textContent) {
@@ -188,61 +195,223 @@
         text = input.dataset.reskinLabelText;
       }
 
-      // Strip prior layout helper classes first so a pos change re-flows cleanly.
-      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
-
-      // Floating: do NOT inject our label; remove any prior one so Vuetify's
-      // native floating .v-label remains (reset CSS already kept it visible).
-      if (pos === 'floating') {
-        var prior = input.querySelector('.reskin-label');
-        if (prior) prior.parentNode.removeChild(prior);
+      // No text and no label to show — skip.
+      if (!text) {
         return;
       }
 
-      // DEDUP — reuse an existing .reskin-label in this .v-input if present.
-      var labelEl = input.querySelector('.reskin-label');
+      // Build the wrapper div.
+      var rfWrap = document.createElement('div');
+      rfWrap.className = 'rf-wrap';
 
-      // Skip empty labels: if there's no text (and no persisted fallback) and
-      // no label was previously injected, don't insert an empty block. If a
-      // label was previously injected but text is now empty, leave it as-is.
-      if (!text && !labelEl) {
-        return;
-      }
+      // Build the label div.
+      var rfLabel = document.createElement('div');
+      rfLabel.className = 'rf-label';
+      rfLabel.textContent = text;
+      rfLabel.style.color = labelColor;
 
-      if (!labelEl) {
-        labelEl = document.createElement('div');
-        labelEl.className = 'reskin-label';
-      }
-      labelEl.textContent = text;
-      labelEl.style.color = labelColor;
-
+      // Apply wrapper layout class + label sizing per position.
       if (pos === 'left' || pos === 'links') {
-        labelEl.classList.add('reskin-label-fixed');
-        input.classList.add('reskin-input-left');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
+        rfWrap.className = 'rf-wrap rf-wrap--left';
+        rfWrap.style.cssText = 'display:flex;flex-direction:row;align-items:center;';
+        rfLabel.style.width = '120px';
+        rfLabel.style.flexShrink = '0';
+        rfLabel.style.marginRight = '12px';
       } else if (pos === 'right' || pos === 'rechts') {
-        labelEl.classList.add('reskin-label-fixed');
-        input.classList.add('reskin-input-right');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
+        rfWrap.className = 'rf-wrap rf-wrap--right';
+        rfWrap.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:center;';
+        rfLabel.style.width = '120px';
+        rfLabel.style.flexShrink = '0';
+        rfLabel.style.marginLeft = '12px';
       } else {
         // top / boven (default)
-        labelEl.classList.remove('reskin-label-fixed');
-        input.classList.add('reskin-input-top');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
+        rfWrap.className = 'rf-wrap rf-wrap--top';
+        rfWrap.style.cssText = 'display:flex;flex-direction:column;';
+        rfLabel.style.marginBottom = '6px';
       }
+
+      // Insert wrapper in place of the .v-input, then move .v-input inside.
+      input.parentNode.insertBefore(rfWrap, input);
+      rfWrap.appendChild(rfLabel);
+      rfWrap.appendChild(input);
+
+      // Mark as wrapped to prevent double-wrapping on re-runs.
+      input.dataset.rfWrapped = '1';
     });
   }
 
-  // ── removeLabels — strip injected labels + helper classes (3R.B3) ───────
-  function removeLabels() {
-    var labels = Array.prototype.slice.call(document.querySelectorAll('.reskin-label'));
-    labels.forEach(function (lbl) {
+  // ── removeFieldWrappers — unwrap all .rf-wrap, restore .v-input in place ─
+  function removeFieldWrappers() {
+    var wraps = Array.prototype.slice.call(document.querySelectorAll('.rf-wrap'));
+    wraps.forEach(function (rfWrap) {
+      var vInput = rfWrap.querySelector('.v-input');
+      if (vInput) {
+        if (rfWrap.parentNode) rfWrap.parentNode.insertBefore(vInput, rfWrap);
+        delete vInput.dataset.rfWrapped;
+      }
+      if (rfWrap.parentNode) rfWrap.parentNode.removeChild(rfWrap);
+    });
+    // Clear rfWrapped on any .v-input that Vue moved out of a wrapper (no longer inside rfWrap).
+    var allInputs = document.querySelectorAll('.v-input[data-rf-wrapped]');
+    Array.prototype.forEach.call(allInputs, function (inp) {
+      delete inp.dataset.rfWrapped;
+    });
+    // Also remove any standalone .rf-label elements that may exist outside wrappers.
+    var orphans = Array.prototype.slice.call(document.querySelectorAll('.rf-label'));
+    orphans.forEach(function (lbl) {
       if (lbl.parentNode) lbl.parentNode.removeChild(lbl);
     });
-    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
-    inputs.forEach(function (input) {
-      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
-    });
+  }
+
+  /* ================================================================
+     makeReskinField(cfg)
+     Standalone factory — creates a pure HTML field independent of
+     Vuetify. For demo/preview purposes. Returns .rf-root HTMLElement.
+     cfg keys mirror the _cfg keys in makeConfigSidebar.
+  ================================================================ */
+  function makeReskinField(cfg) {
+    cfg = cfg || {};
+    var variant = cfg.variant || 'outlined';
+    var labelPos = cfg.labelPos || 'top';
+    var radius = (cfg.radius === 0 || cfg.radius) ? cfg.radius : 8;
+    var radiusPos = cfg.radiusPos || 'beide';
+    var size = cfg.size || 'standard';
+    var customHeight = cfg.customHeight || 48;
+    var label = cfg.label || '';
+    var placeholder = cfg.placeholder || '';
+    var value = cfg.value || '';
+    var borderColor = cfg.borderColor || '#B3C0DD';
+    var fillColor = cfg.fillColor || '#FFFFFF';
+    var labelColor = cfg.labelColor || '#464646';
+    var textColor = cfg.textColor || '#1A1A2E';
+    var strokeWidth = (cfg.strokeWidth === 0 || cfg.strokeWidth) ? cfg.strokeWidth : 1;
+
+    // Resolve border-radius value from radiusPos.
+    var radiusValue;
+    if (radiusPos === 'geen') {
+      radiusValue = '0';
+    } else if (radiusPos === 'boven') {
+      radiusValue = radius + 'px ' + radius + 'px 0 0';
+    } else if (radiusPos === 'beneden') {
+      radiusValue = '0 0 ' + radius + 'px ' + radius + 'px';
+    } else {
+      radiusValue = radius + 'px';
+    }
+
+    // Resolve min-height from size.
+    var height;
+    if (size === 'compact') {
+      height = 38;
+    } else if (size === 'large') {
+      height = 58;
+    } else if (size === 'custom') {
+      height = customHeight;
+    } else {
+      height = 48;
+    }
+
+    // Resolve variant-specific border + background inline styles.
+    var bg;
+    var borderStyle;
+    var controlRadiusValue = radiusValue;
+
+    if (variant === 'outlined') {
+      bg = 'transparent';
+      borderStyle = strokeWidth + 'px solid ' + borderColor;
+    } else if (variant === 'outlined-filled') {
+      bg = fillColor;
+      borderStyle = strokeWidth + 'px solid ' + borderColor;
+    } else if (variant === 'filled') {
+      bg = fillColor;
+      borderStyle = 'none';
+      controlRadiusValue = radius + 'px ' + radius + 'px 0 0';
+    } else if (variant === 'filled-underline') {
+      bg = fillColor;
+      borderStyle = 'none';
+    } else if (variant === 'underline') {
+      bg = 'transparent';
+      borderStyle = 'none';
+    } else {
+      // borderless
+      bg = 'transparent';
+      borderStyle = 'none';
+    }
+
+    // Build .rf-control (the styled field shell).
+    var rfControl = document.createElement('div');
+    rfControl.className = 'rf-control';
+    rfControl.style.background = bg;
+    rfControl.style.border = borderStyle;
+    if (variant === 'filled-underline' || variant === 'underline') {
+      rfControl.style.borderBottom = strokeWidth + 'px solid ' + borderColor;
+    }
+    rfControl.style.borderRadius = controlRadiusValue;
+    rfControl.style.minHeight = height + 'px';
+    rfControl.style.boxSizing = 'border-box';
+    rfControl.style.display = 'flex';
+    rfControl.style.alignItems = 'center';
+    rfControl.style.padding = '0 12px';
+
+    // Build .rf-input (the actual text input inside .rf-control).
+    var rfInput = document.createElement('input');
+    rfInput.type = 'text';
+    rfInput.className = 'rf-input';
+    rfInput.placeholder = placeholder;
+    rfInput.value = value;
+    rfInput.readOnly = false;
+    rfInput.style.color = textColor;
+    rfInput.style.fontSize = '14px';
+    rfInput.style.fontFamily = 'inherit';
+    rfInput.style.border = 'none';
+    rfInput.style.outline = 'none';
+    rfInput.style.background = 'transparent';
+    rfInput.style.width = '100%';
+    rfControl.appendChild(rfInput);
+
+    // Build .rf-root — the outermost container that holds label + control.
+    var rfRoot = document.createElement('div');
+    rfRoot.className = 'rf-root';
+
+    // For floating: no label element — just return control inside root.
+    if (labelPos === 'floating') {
+      rfRoot.appendChild(rfControl);
+      return rfRoot;
+    }
+
+    // Build .rf-label for non-floating positions.
+    var rfLabel = document.createElement('div');
+    rfLabel.className = 'rf-label';
+    rfLabel.textContent = label;
+    rfLabel.style.color = labelColor;
+
+    if (labelPos === 'top' || labelPos === 'boven') {
+      rfRoot.style.cssText = 'display:flex;flex-direction:column;';
+      rfLabel.style.marginBottom = '6px';
+      rfRoot.appendChild(rfLabel);
+      rfRoot.appendChild(rfControl);
+    } else if (labelPos === 'left' || labelPos === 'links') {
+      rfRoot.style.cssText = 'display:flex;flex-direction:row;align-items:center;';
+      rfLabel.style.width = '120px';
+      rfLabel.style.flexShrink = '0';
+      rfLabel.style.marginRight = '12px';
+      rfRoot.appendChild(rfLabel);
+      rfRoot.appendChild(rfControl);
+    } else if (labelPos === 'right' || labelPos === 'rechts') {
+      rfRoot.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:center;';
+      rfLabel.style.width = '120px';
+      rfLabel.style.flexShrink = '0';
+      rfLabel.style.marginLeft = '12px';
+      rfRoot.appendChild(rfControl);
+      rfRoot.appendChild(rfLabel);
+    } else {
+      // Fallback: treat as top.
+      rfRoot.style.cssText = 'display:flex;flex-direction:column;';
+      rfLabel.style.marginBottom = '6px';
+      rfRoot.appendChild(rfLabel);
+      rfRoot.appendChild(rfControl);
+    }
+
+    return rfRoot;
   }
 
   /* ================================================================
@@ -668,7 +837,7 @@
     resetBtn.addEventListener('click', function () {
       setConfig(ORIGINAL);
       removeStyle();
-      removeLabels();
+      removeFieldWrappers();
     });
     footer.appendChild(resetBtn);
     aside.appendChild(footer);
@@ -780,7 +949,7 @@
   // Reset CSS is built per-cfg so the floating-label exception is honoured.
   function applyConfig(cfg) {
     injectStyle(buildResetCSS(cfg) + '\n' + buildShellCSS(cfg));
-    injectLabels(cfg);
+    injectFieldWrappers(cfg);
   }
 
   // ── onChange wiring ─────────────────────────────────────────────────────
