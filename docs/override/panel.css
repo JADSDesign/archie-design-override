@@ -1,35 +1,376 @@
+/* ─── Archie Override panel — scoped CSS (v1.0.0) ────────────────────
+   Everything is scoped under #archie-override-panel so it never leaks
+   onto Archie's own elements. CSS variables are defined on the wrapper. */
+
 #archie-override-panel {
+  --primary:        #592B59;
+  --primary-bg:     rgba(89,43,89,0.08);
+  --primary-border: rgba(89,43,89,0.3);
+  --focus-ring:     rgba(89,43,89,0.15);
+
+  --text-dark:  #1A1A2E;
+  --text-mid:   #464646;
+  --text-light: #909090;
+
+  --border:       #B3C0DD;
+  --border-hover: #8090B8;
+
+  --bg-medium: #EFF1F5;
+  --bg-light:  #F5F7F9;
+  --bg-white:  #FFFFFF;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  --font: system-ui, -apple-system, 'Lexend', sans-serif;
+}
+
+/* ─── Config sidebar ─────────────────────────────────────────── */
+#archie-override-panel .config-sidebar {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--bg-white);
+  border-right: 1px solid var(--border);
   z-index: 999999;
-  font-family: system-ui, -apple-system, sans-serif;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow-y: auto;
+  font-family: var(--font);
+}
+
+#archie-override-panel .config-sidebar.open {
+  transform: translateX(0);
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+}
+
+#archie-override-panel .config-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-white);
+  z-index: 1;
+}
+
+#archie-override-panel .config-sidebar-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#archie-override-panel .config-sidebar-gear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+
+#archie-override-panel .config-sidebar-title {
   font-size: 13px;
   font-weight: 600;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: 2px solid #592B59;
-  background: #fff;
-  color: #592B59;
-  box-shadow: 0 2px 16px rgba(89, 43, 89, 0.2);
+  color: var(--text-dark);
+  letter-spacing: -0.2px;
+}
+
+#archie-override-panel .config-close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  font-size: 14px;
   cursor: pointer;
-  user-select: none;
-  letter-spacing: 0.3px;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
 }
 
-#archie-override-panel:hover {
-  background: #592B59;
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(89, 43, 89, 0.35);
+#archie-override-panel .config-close-btn:hover {
+  background: var(--bg-medium);
+  color: var(--text-dark);
 }
 
-#archie-override-panel[data-mode="proposal"] {
-  background: #592B59;
-  color: #fff;
+#archie-override-panel .config-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bg-medium);
 }
 
-#archie-override-panel[data-mode="proposal"]:hover {
-  background: #fff;
-  color: #592B59;
+#archie-override-panel .config-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+#archie-override-panel .config-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#archie-override-panel .config-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-mid);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+
+#archie-override-panel .config-radio-group label:hover {
+  background: var(--bg-light);
+}
+
+#archie-override-panel .config-radio-group input[type="radio"] {
+  accent-color: var(--primary);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* Radius pills */
+#archie-override-panel .config-radius-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#archie-override-panel .config-radius-pill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-mid);
+  background: var(--bg-white);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+#archie-override-panel .config-radius-pill:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-light);
+}
+
+#archie-override-panel .config-radius-pill.active {
+  background: var(--primary-bg);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+/* Toggle list */
+#archie-override-panel .config-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#archie-override-panel .config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+#archie-override-panel .config-toggle-label {
+  font-size: 13px;
+  color: var(--text-mid);
+}
+
+/* Toggle switch */
+#archie-override-panel .config-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  cursor: pointer;
+}
+
+#archie-override-panel .config-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+#archie-override-panel .config-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: #D5DCE8;
+  border-radius: 9px;
+  transition: background 0.15s;
+}
+
+#archie-override-panel .config-toggle input:checked + .config-toggle-track {
+  background: var(--primary);
+}
+
+#archie-override-panel .config-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--bg-white);
+  border-radius: 50%;
+  transition: left 0.15s;
+  pointer-events: none;
+}
+
+#archie-override-panel .config-toggle input:checked ~ .config-toggle-thumb {
+  left: 16px;
+}
+
+/* Config segmented bar (size selector) */
+#archie-override-panel .config-segmented {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+#archie-override-panel .config-seg-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  line-height: 1.4;
+}
+#archie-override-panel .config-seg-btn:last-child { border-right: none; }
+#archie-override-panel .config-seg-btn.active { background: var(--primary); color: #fff; }
+#archie-override-panel .config-seg-btn:hover:not(.active) { background: var(--bg-light); }
+
+/* Config number input */
+#archie-override-panel .config-number-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--text-dark);
+  outline: none;
+  box-sizing: border-box;
+}
+#archie-override-panel .config-number-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* ─── Kleuren section (Phase 3) ──────────────────────────────── */
+#archie-override-panel .config-color-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#archie-override-panel .config-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#archie-override-panel .config-color-row-label {
+  font-size: 13px;
+  color: var(--text-mid);
+  flex: 1;
+}
+
+#archie-override-panel .config-color-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#archie-override-panel .config-color-hex {
+  width: 78px;
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-dark);
+  outline: none;
+  box-sizing: border-box;
+}
+#archie-override-panel .config-color-hex:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* ─── Stroke-dikte section (Phase 3) ─────────────────────────── */
+#archie-override-panel .config-stroke-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#archie-override-panel .config-stroke-slider {
+  flex: 1;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+#archie-override-panel .config-stroke-value {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+/* ─── Footer (Phase 3) ───────────────────────────────────────── */
+#archie-override-panel .config-footer {
+  padding: 14px 16px;
+  display: flex;
+  gap: 8px;
+}
+
+#archie-override-panel .config-footer-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-white);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-mid);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+#archie-override-panel .config-footer-btn:hover {
+  border-color: var(--primary-border);
+  color: var(--primary);
+  background: var(--primary-bg);
 }
