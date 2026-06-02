@@ -1,6 +1,41 @@
 {
   "source": "crmonline.archie.nu",
-  "capturedAt": "pending-dom-analysis",
-  "description": "CSS custom properties from live Archie CRM — populated after Phase 1 DOM analysis",
-  "tokens": {}
+  "capturedAt": "2026-06-02",
+  "theme": "light",
+  "note": "Vuetify 4 stores colors as RGB triplets without rgb() wrapper. Usage: rgb(var(--v-theme-primary))",
+  "tokens": {
+    "--v-theme-primary": "100,6,100",
+    "--v-theme-archiePurple": "89,43,89",
+    "--v-theme-background": "245,247,249",
+    "--v-theme-surface": "255,255,255",
+    "--v-theme-card": "255,255,255",
+    "--v-theme-borderColor": "239,241,245",
+    "--v-theme-backgroundColor": "233,236,240",
+    "--v-theme-tabBackground": "245,245,245",
+    "--v-theme-hoverColor": "100,6,100,0.0784313725490196",
+    "--v-theme-selectionColor": "100,6,100,0.1568627450980392",
+    "--v-theme-secondary": "255,107,53",
+    "--v-theme-archie-orange": "255,107,53",
+    "--v-theme-accent": "156,39,176",
+    "--v-theme-error": "244,67,54",
+    "--v-theme-success": "76,175,80",
+    "--v-theme-warning": "255,152,0",
+    "--v-theme-purpleGray8": "160,169,206",
+    "--v-theme-purpleGray12": "128,123,176",
+    "--v-theme-purpleGray16": "106,76,140",
+    "--v-theme-fuchsia1400": "50,13,49",
+    "--v-border-color": "0, 0, 0",
+    "--v-border-opacity": "0.12",
+    "--v-shadow-color": "0, 0, 0",
+    "--v-hover-opacity": "0.04",
+    "--v-focus-opacity": "0.12",
+    "--v-medium-emphasis-opacity": "0.6",
+    "--v-disabled-opacity": "0.38"
+  },
+  "computed": {
+    "fieldBorderColor": "rgb(179, 192, 221)",
+    "fieldBorderRadius": "8px",
+    "cardBorderRadius": "16px",
+    "cardBoxShadow": "rgba(0, 0, 0, 0.3) 0px 4px 4px 0px, rgba(0, 0, 0, 0.15) 0px 8px 12px 6px"
+  }
 }
