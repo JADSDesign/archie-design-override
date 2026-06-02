@@ -31,6 +31,8 @@
   if (existingPanel) {
     // Relies on function-declaration hoisting: removeAOFields is defined below.
     removeAOFields();
+    var aoTokens = ['--ao-border-color','--ao-fill','--ao-label-color','--ao-text-color','--ao-stroke','--ao-radius-top','--ao-radius-bottom'];
+    aoTokens.forEach(function(t){ document.documentElement.style.removeProperty(t); });
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
     if (existingStyle) existingStyle.parentNode.removeChild(existingStyle);
@@ -715,16 +717,17 @@
 
   // ── applyAOTokens — set CSS custom properties from config ────────────────
   function applyAOTokens(cfg) {
+    if (!cfg) return;
     var root = document.documentElement;
 
     root.style.setProperty('--ao-border-color', cfg.borderColor || '#B3C0DD');
     root.style.setProperty('--ao-fill', cfg.fillColor || '#FFFFFF');
     root.style.setProperty('--ao-label-color', cfg.labelColor || '#464646');
     root.style.setProperty('--ao-text-color', cfg.textColor || '#1A1A2E');
-    root.style.setProperty('--ao-stroke', (cfg.strokeWidth || 1) + 'px');
+    root.style.setProperty('--ao-stroke', ((cfg.strokeWidth !== undefined && cfg.strokeWidth !== null) ? cfg.strokeWidth : 1) + 'px');
 
     // Calculate --ao-radius-top based on radiusPos
-    var radiusValue = cfg.radius || 8;
+    var radiusValue = (cfg.radius !== undefined && cfg.radius !== null) ? cfg.radius : 8;
     var radiusPos = cfg.radiusPos || 'beide';
     var radiusTop = '0px';
     var radiusBottom = '0px';
