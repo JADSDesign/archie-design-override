@@ -10,6 +10,11 @@
     "shadow": 1,
     "typoScale": 1.0,
     "buttonStyle": "rounded",
-    "variant": "outlined"
+    "variant": "outlined",
+    "borderColor": "#B3C0DD",
+    "fillColor": "#FFFFFF",
+    "labelColor": "#464646",
+    "textColor": "#1A1A2E",
+    "strokeWidth": 1
   }
 }

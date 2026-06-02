@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.0 — 2026-06-02
+- Phase 3: full control panel — replaces the v0.2.0 toggle PoC with the v13 config sidebar
+- `panel.js`: ports `makeConfigSidebar(id, title, opts, onChange)` from archie-input-reference-v13.0.html, converted from ES6 to ES5 (var/function only — no const/let/arrow/template literals) for Chrome bookmarklet compatibility
+- Sidebar mounted in `<div id="archie-override-panel">`, opened at init; `showSlots:false` (no "Zichtbare elementen")
+- Controls:
+  - **Veldtype** — 6 variants: outlined, outlined-filled, filled, filled-underline, underline, borderless (class-swap on every `.v-field` + per-variant CSS)
+  - **Labelpositie (beta)** — top / links / rechts / zwevend — best-effort CSS, FAILS SILENTLY when Vuetify resists (fragile/beta)
+  - **Hoekradius** — geen / boven / beneden / beide + radius chips (0–24)
+  - **Grootte** — compact 38px / standaard 48px / large 58px / custom (slider)
+  - **Kleuren ×4** — Rand / Vulling / Label / Tekst — native color picker + synced hex input each
+  - **Stroke-dikte** — range 0–4px + Npx readout
+- `buildCSSFromConfig(cfg)` maps the full config to one `!important` CSS string; `buildVariantCSS(variant)` for the 6 variants; `applyVariantClasses(variant)` swaps variant classes and stores `dataset.originalVariant`
+- "Huidig" footer button resets to measured Archie defaults (variant outlined, radius 8, size standard, original colors), restores original variant classes, removes injected style
+- `startObserver()` re-applies variant classes + CSS on new `.v-field` nodes (SPA durability), reuses `window._archieObserver`
+- IIFE guard: second bookmarklet click restores variant classes, removes panel + style + css link, disconnects observer
+- `presets/proposal.json`: added borderColor #B3C0DD, fillColor #FFFFFF, labelColor #464646, textColor #1A1A2E, strokeWidth 1
+- Synced `override/panel.{js,css}` → `docs/override/` (GitHub Pages serves docs/ only)
+- ⚠️ labelPos is fragile/beta — Vuetify's internal label positioning may override the injected CSS; the panel does not throw if so
+
 ## v0.2.0 — 2026-06-02
 - Phase 2 PoC: CSS injection validated on live Archie CRM
 - `panel.js`: injectStyle, buildOriginalCSS, buildProposalCSS, buildToggleButton, startObserver
