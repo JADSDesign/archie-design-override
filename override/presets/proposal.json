@@ -1,0 +1,15 @@
+{
+  "version": "proposal",
+  "description": "v12.8 design system proposal values",
+  "tokens": {
+    "primary": "#592B59",
+    "primaryBg": "rgba(89,43,89,0.08)",
+    "border": "#B3C0DD",
+    "filledBg": "#EEF0F7",
+    "radius": 8,
+    "shadow": 1,
+    "typoScale": 1.0,
+    "buttonStyle": "rounded",
+    "variant": "outlined"
+  }
+}

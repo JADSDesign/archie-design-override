@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archie Design Override</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 560px;
+      margin: 80px auto;
+      padding: 0 24px;
+      color: #1a1a2e;
+      background: #f5f7f9;
+    }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    p { color: #464646; line-height: 1.6; margin-bottom: 20px; }
+    .bookmarklet {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #592B59;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 15px;
+      margin-bottom: 24px;
+      cursor: grab;
+    }
+    .bookmarklet:hover { background: #7a3d7a; }
+    .instructions { font-size: 14px; color: #666; }
+    .instructions li { margin-bottom: 6px; }
+    .version { font-size: 12px; color: #999; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <h1>⚙ Archie Design Override</h1>
+  <p>Sleep de knop hieronder naar je bookmarkbalk. Ga dan naar crmonline.archie.nu en klik de bookmark.</p>
+
+  <a class="bookmarklet" href="javascript:(function(){var s=document.createElement('script');s.src='https://jadsdesign.github.io/archie-design-override/override/panel.js?v='+Date.now();document.head.appendChild(s);})();">⚙ Archie Override</a>
+
+  <ol class="instructions">
+    <li>Sleep de knop hierboven naar je bookmarkbalk</li>
+    <li>Log in op <strong>crmonline.archie.nu</strong></li>
+    <li>Klik de <strong>⚙ Archie Override</strong> bookmark</li>
+    <li>Het control panel verschijnt rechtsonder</li>
+    <li>Klik <strong>✦ Voorstel</strong> voor het volledige ontwerp-voorstel</li>
+    <li>Klik <strong>▾</strong> om het panel in te klappen tijdens een presentatie</li>
+    <li>Klik <strong>✕</strong> of de bookmark opnieuw om alles te resetten</li>
+  </ol>
+
+  <p class="version">panel.js v0.1.0-skeleton · <a href="../override/panel.js" style="color:#592B59">panel.js bekijken</a></p>
+</body>
+</html>
