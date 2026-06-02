@@ -1,13 +1,15 @@
 // Archie Design Override — full control panel
-// v1.1.0
+// v2.0.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '1.1.0';
+  var VERSION = '2.0.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
   var BASE_URL = 'https://jadsdesign.github.io/archie-design-override/override/';
   var _reskinTimer;
+  var AO_FIELD_ATTR = 'data-ao-id';
+  var _currentCfg = null; // used by startObserver (Task 5) to re-apply on DOM mutations
 
   // Measured Archie defaults — used by the "Huidig" reset button.
   var ORIGINAL = {
@@ -27,8 +29,10 @@
   // ── IIFE guard — second click removes everything and exits ──────────────
   var existingPanel = document.getElementById(PANEL_ID);
   if (existingPanel) {
-    // Relies on function-declaration hoisting: removeLabels is defined below.
-    removeLabels();
+    // Relies on function-declaration hoisting: removeAOFields is defined below.
+    removeAOFields();
+    var aoTokens = ['--ao-border-color','--ao-fill','--ao-label-color','--ao-text-color','--ao-stroke','--ao-radius-top','--ao-radius-bottom'];
+    aoTokens.forEach(function(t){ document.documentElement.style.removeProperty(t); });
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
     if (existingStyle) existingStyle.parentNode.removeChild(existingStyle);
@@ -57,192 +61,127 @@
     if (elNode) elNode.parentNode.removeChild(elNode);
   }
 
-  // ── buildResetCSS — hide Vuetify's own field chrome (3R.A2) ─────────────
-  // All rules !important. Hides __outline + __overlay always; hides the native
-  // .v-label EXCEPT when labelPos is floating (3R.B floating exception): in that
-  // one case Vuetify's own floating label must stay visible.
-  function buildResetCSS(cfg) {
-    var pos = (cfg && cfg.labelPos) || 'top';
-    var lines = [
-      '/* Archie Override v' + VERSION + ' — reset */',
-      '.v-field__outline { display: none !important; }',
-      '.v-field__overlay { display: none !important; }'
-    ];
-    if (pos !== 'floating') {
-      lines.push('.v-field__field .v-label { display: none !important; }');
-    }
-    return lines.join('\n');
+  // ── buildAOResetCSS — hides Vuetify .v-input elements that have been replaced ─
+  function buildAOResetCSS() {
+    return '.v-input[' + AO_FIELD_ATTR + '] { display: none !important; }';
   }
 
-  // ── buildShellCSS — style .v-field itself as our field (3R.A3 + A4) ─────
-  function buildShellCSS(cfg) {
-    var border = cfg.borderColor || '#B3C0DD';
-    var fill = cfg.fillColor || '#FFFFFF';
-    var textColor = cfg.textColor || '#1A1A2E';
-    var stroke = (cfg.strokeWidth === 0 || cfg.strokeWidth) ? cfg.strokeWidth : 1;
-
-    // border-radius per corner (radiusPos).
-    var radius = (cfg.radius === 0 || cfg.radius) ? cfg.radius : 8;
-    var radiusPos = cfg.radiusPos || 'beide';
-    var radiusValue;
-    if (radiusPos === 'geen') {
-      radiusValue = '0';
-    } else if (radiusPos === 'boven') {
-      radiusValue = radius + 'px ' + radius + 'px 0 0';
-    } else if (radiusPos === 'beneden') {
-      radiusValue = '0 0 ' + radius + 'px ' + radius + 'px';
-    } else {
-      radiusValue = radius + 'px';
-    }
-
-    // size → min-height.
-    var height;
-    if (cfg.size === 'compact') {
-      height = 38;
-    } else if (cfg.size === 'large') {
-      height = 58;
-    } else if (cfg.size === 'custom') {
-      height = cfg.customHeight || 48;
-    } else {
-      height = 48;
-    }
-
-    // ── Variant profile on .v-field (A4) ──────────────────────────────────
-    // Each variant drives border + background. Radius is applied below via
-    // radiusValue, but 'filled' forces top-corner-only radius per spec.
-    var variant = cfg.variant || 'outlined';
-    var bg;            // background of .v-field
-    var borderDecl;    // border declaration line(s)
-    var radiusDecl = '  border-radius: ' + radiusValue + ' !important;';
-
-    if (variant === 'outlined') {
-      // full border, transparent background (differs from outlined-filled)
-      bg = 'transparent';
-      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'outlined-filled') {
-      // full border + fillColor
-      bg = fill;
-      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'filled') {
-      // no border, fillColor, top-corner radius only
-      bg = fill;
-      borderDecl = '  border: none !important;';
-      radiusDecl = '  border-radius: ' + radius + 'px ' + radius + 'px 0 0 !important;';
-    } else if (variant === 'filled-underline') {
-      // fillColor + bottom border only
-      bg = fill;
-      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'underline') {
-      // bottom border only, no fill
-      bg = 'transparent';
-      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
-    } else {
-      // borderless: no border, no fill
-      bg = 'transparent';
-      borderDecl = '  border: none !important;';
-    }
-
-    var lines = [
-      '/* Archie Override v' + VERSION + ' — shell */',
-      '.v-field {',
-      '  background: ' + bg + ' !important;',
-      borderDecl,
-      radiusDecl,
-      '  min-height: ' + height + 'px !important;',
-      '  box-shadow: none !important;',
-      '}',
-      // Zero vertical padding on the native input; height is driven by min-height.
-      '.v-field__input {',
-      '  color: ' + textColor + ' !important;',
-      '  padding-top: 0 !important;',
-      '  padding-bottom: 0 !important;',
-      '  min-height: ' + height + 'px !important;',
-      '}'
-    ];
-
-    return lines.join('\n');
+  // ── removeAOFields — remove all .ao-field elements and restore .v-input ──
+  function removeAOFields() {
+    var aoFields = Array.prototype.slice.call(document.querySelectorAll('.ao-field'));
+    aoFields.forEach(function (aoField) {
+      if (aoField.parentNode) aoField.parentNode.removeChild(aoField);
+    });
+    // Restore display on all hidden .v-input elements.
+    var hiddenInputs = Array.prototype.slice.call(
+      document.querySelectorAll('.v-input[' + AO_FIELD_ATTR + ']')
+    );
+    hiddenInputs.forEach(function (vInput) {
+      vInput.style.display = '';
+      vInput.removeAttribute(AO_FIELD_ATTR);
+    });
   }
 
-  // ── injectLabels — inject our own label per labelPos (3R.B1) ─────────────
-  function injectLabels(cfg) {
-    var pos = (cfg && cfg.labelPos) || 'top';
-    var labelColor = (cfg && cfg.labelColor) || '#464646';
-    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
+  // ── injectAOFields — inject in-flow .ao-field after each .v-input ─────────
+  // Hides .v-input and inserts our own .ao-field directly after it in the DOM.
+  // Vuetify's input stays in the DOM for future value-bridging.
+  function injectAOFields(cfg) {
+    removeAOFields();              // tear down first, always
+    _currentCfg = cfg;
 
-    inputs.forEach(function (input) {
-      // SKIP search inputs.
-      if (input.className && input.className.indexOf('search-input-wrapper') !== -1) {
+    var variant = (cfg && cfg.variant) || 'outlined';
+    var labelPos = (cfg && cfg.labelPos) || 'top';
+    var size = (cfg && cfg.size) || 'standard';
+
+    var inputs = Array.prototype.slice.call(
+      document.querySelectorAll('.v-input')
+    );
+
+    inputs.forEach(function (vInput) {
+      // Only process .v-input elements that contain a .v-field (filters color pickers etc.)
+      if (!vInput.querySelector('.v-field')) { return; }
+
+      // Skip search inputs.
+      if (vInput.className && vInput.className.indexOf('search-input-wrapper') !== -1) {
         return;
       }
 
-      // Read label text from the native .v-label, persist on the .v-input so it
-      // survives if Vuetify later empties .v-label.
-      var nativeLabel = input.querySelector('.v-label');
+      // Read label text from native .v-label; persist on .v-input for re-injection resilience.
+      var nativeLabel = vInput.querySelector('.v-label');
       var text = '';
       if (nativeLabel && nativeLabel.textContent) {
         text = nativeLabel.textContent.trim();
       }
       if (text) {
-        input.dataset.reskinLabelText = text;
-      } else if (input.dataset.reskinLabelText) {
-        text = input.dataset.reskinLabelText;
+        vInput.dataset.aoLabel = text;
+      } else if (vInput.dataset.aoLabel) {
+        text = vInput.dataset.aoLabel;
       }
 
-      // Strip prior layout helper classes first so a pos change re-flows cleanly.
-      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
-
-      // Floating: do NOT inject our label; remove any prior one so Vuetify's
-      // native floating .v-label remains (reset CSS already kept it visible).
-      if (pos === 'floating') {
-        var prior = input.querySelector('.reskin-label');
-        if (prior) prior.parentNode.removeChild(prior);
-        return;
+      // Read optional prepend icon SVG from .v-field__prepend-inner.
+      var prependInner = vInput.querySelector('.v-field__prepend-inner');
+      var iconSVG = '';
+      if (prependInner) {
+        var svgEl = prependInner.querySelector('svg');
+        if (svgEl) { iconSVG = svgEl.outerHTML; }
       }
 
-      // DEDUP — reuse an existing .reskin-label in this .v-input if present.
-      var labelEl = input.querySelector('.reskin-label');
+      // Assign a unique ID to this .v-input for cross-referencing.
+      if (!vInput.dataset.aoId) {
+        vInput.dataset.aoId = 'ao-' + Math.random().toString(36).substr(2, 9);
+      }
+      var uid = vInput.dataset.aoId;
 
-      // Skip empty labels: if there's no text (and no persisted fallback) and
-      // no label was previously injected, don't insert an empty block. If a
-      // label was previously injected but text is now empty, leave it as-is.
-      if (!text && !labelEl) {
-        return;
+      // Hide the native .v-input.
+      vInput.style.display = 'none'; // redundant with buildAOResetCSS, maar garandeert hide vóór style-tag geladen is
+
+      // Build .ao-field.
+      var aoField = document.createElement('div');
+      aoField.className = 'ao-field';
+      aoField.setAttribute('data-variant', variant);
+      aoField.setAttribute('data-label-pos', labelPos);
+      // floating: CSS-gedrag (label zweeft omhoog bij focus) wordt geïmplementeerd in Task 3 CSS
+      aoField.setAttribute('data-size', size);
+      aoField.setAttribute('data-ao-source-id', uid);
+
+      // Build .ao-label.
+      if (text) {
+        var aoLabel = document.createElement('div');
+        aoLabel.className = 'ao-label';
+        aoLabel.textContent = text;
+        aoField.appendChild(aoLabel);
       }
 
-      if (!labelEl) {
-        labelEl = document.createElement('div');
-        labelEl.className = 'reskin-label';
-      }
-      labelEl.textContent = text;
-      labelEl.style.color = labelColor;
+      // Build .ao-control.
+      var aoControl = document.createElement('div');
+      aoControl.className = 'ao-control';
 
-      if (pos === 'left' || pos === 'links') {
-        labelEl.classList.add('reskin-label-fixed');
-        input.classList.add('reskin-input-left');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
-      } else if (pos === 'right' || pos === 'rechts') {
-        labelEl.classList.add('reskin-label-fixed');
-        input.classList.add('reskin-input-right');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
-      } else {
-        // top / boven (default)
-        labelEl.classList.remove('reskin-label-fixed');
-        input.classList.add('reskin-input-top');
-        if (input.firstChild !== labelEl) input.insertBefore(labelEl, input.firstChild);
+      // Optionally build .ao-icon.
+      if (iconSVG) {
+        var aoIcon = document.createElement('span');
+        aoIcon.className = 'ao-icon';
+        aoIcon.innerHTML = iconSVG;
+        aoControl.appendChild(aoIcon);
       }
+
+      // Build input.ao-input.
+      var aoInput = document.createElement('input');
+      aoInput.className = 'ao-input';
+      aoInput.type = 'text';
+      aoControl.appendChild(aoInput);
+
+      aoField.appendChild(aoControl);
+
+      // Insert .ao-field directly after the hidden .v-input (in-flow).
+      vInput.insertAdjacentElement('afterend', aoField);
     });
   }
 
-  // ── removeLabels — strip injected labels + helper classes (3R.B3) ───────
-  function removeLabels() {
-    var labels = Array.prototype.slice.call(document.querySelectorAll('.reskin-label'));
-    labels.forEach(function (lbl) {
-      if (lbl.parentNode) lbl.parentNode.removeChild(lbl);
-    });
-    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
-    inputs.forEach(function (input) {
-      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
-    });
+  /**
+   * bridgeValue(aoField)
+   * A-bridge TODO: sync ao-input.value -> native input + dispatch events
+   */
+  function bridgeValue(aoField) { // eslint-disable-line no-unused-vars
   }
 
   /* ================================================================
@@ -668,7 +607,7 @@
     resetBtn.addEventListener('click', function () {
       setConfig(ORIGINAL);
       removeStyle();
-      removeLabels();
+      removeAOFields();
     });
     footer.appendChild(resetBtn);
     aside.appendChild(footer);
@@ -776,11 +715,39 @@
     return { el: aside, getConfig: getConfig, setConfig: setConfig, open: open, close: close, toggle: toggle };
   }
 
+  // ── applyAOTokens — set CSS custom properties from config ────────────────
+  function applyAOTokens(cfg) {
+    if (!cfg) return;
+    var root = document.documentElement;
+
+    root.style.setProperty('--ao-border-color', cfg.borderColor || '#B3C0DD');
+    root.style.setProperty('--ao-fill', cfg.fillColor || '#FFFFFF');
+    root.style.setProperty('--ao-label-color', cfg.labelColor || '#464646');
+    root.style.setProperty('--ao-text-color', cfg.textColor || '#1A1A2E');
+    root.style.setProperty('--ao-stroke', ((cfg.strokeWidth !== undefined && cfg.strokeWidth !== null) ? cfg.strokeWidth : 1) + 'px');
+
+    // Calculate --ao-radius-top based on radiusPos
+    var radiusValue = (cfg.radius !== undefined && cfg.radius !== null) ? cfg.radius : 8;
+    var radiusPos = cfg.radiusPos || 'beide';
+    var radiusTop = '0px';
+    var radiusBottom = '0px';
+
+    if (radiusPos === 'boven' || radiusPos === 'beide') {
+      radiusTop = radiusValue + 'px';
+    }
+    if (radiusPos === 'beneden' || radiusPos === 'beide') {
+      radiusBottom = radiusValue + 'px';
+    }
+
+    root.style.setProperty('--ao-radius-top', radiusTop);
+    root.style.setProperty('--ao-radius-bottom', radiusBottom);
+  }
+
   // ── applyConfig — shared apply path for handleChange + observer ─────────
-  // Reset CSS is built per-cfg so the floating-label exception is honoured.
   function applyConfig(cfg) {
-    injectStyle(buildResetCSS(cfg) + '\n' + buildShellCSS(cfg));
-    injectLabels(cfg);
+    applyAOTokens(cfg);
+    injectStyle(buildAOResetCSS());
+    injectAOFields(cfg);
   }
 
   // ── onChange wiring ─────────────────────────────────────────────────────
@@ -802,7 +769,7 @@
       if (hasNewField) {
         clearTimeout(_reskinTimer);
         _reskinTimer = setTimeout(function () {
-          applyConfig(sidebar.getConfig());
+          applyConfig(_currentCfg || sidebar.getConfig());
         }, 80);
       }
     });

@@ -375,73 +375,154 @@
   background: var(--primary-bg);
 }
 
-/* ─── Reskin field wrappers (.rf-* namespace) ──────────────────────
-   Used by injectFieldWrappers() to wrap .v-input elements and by
-   makeReskinField() for standalone components. NOT scoped under
-   #archie-override-panel since this is injected into Archie's DOM. */
+/* ─── AO Field component (.ao-* namespace) ─────────────────────────
+   Injected into Archie's own DOM — NOT scoped under
+   #archie-override-panel. Visual tokens come from CSS custom
+   properties set by applyAOTokens() on document.documentElement. */
 
-/* Base wrapper: default top-label layout */
-.rf-wrap {
+/* ── Base field ─────────────────────────────────────────────────── */
+.ao-field {
   display: flex;
+  width: 100%;
+  position: relative;
+  flex-direction: column; /* default: top */
+}
+
+/* ── Label-position variants ────────────────────────────────────── */
+.ao-field[data-label-pos="top"] {
   flex-direction: column;
 }
 
-/* Left-label layout: row with centered items */
-.rf-wrap--left {
+.ao-field[data-label-pos="left"] {
   flex-direction: row;
   align-items: center;
 }
 
-/* Right-label layout: reversed row with centered items */
-.rf-wrap--right {
+.ao-field[data-label-pos="right"] {
   flex-direction: row-reverse;
   align-items: center;
 }
 
-/* Label base styles */
-.rf-label {
-  font: 500 13px/1.4 Lexend, sans-serif;
-  display: block;
-  color: #464646;
+.ao-field[data-label-pos="floating"] {
+  flex-direction: column;
 }
 
-/* Top layout: label above input */
-.rf-wrap--top .rf-label {
+/* ── Label ──────────────────────────────────────────────────────── */
+.ao-label {
+  color: var(--ao-label-color);
+  font: 500 12px/1.4 Lexend, system-ui, sans-serif;
+  display: block;
+}
+
+/* Top-label: spacing between label and control */
+.ao-field[data-label-pos="top"] .ao-label {
   margin-bottom: 6px;
 }
 
-/* Side layouts: fixed-width label with margin */
-.rf-wrap--left .rf-label,
-.rf-wrap--right .rf-label {
+/* Side-label: fixed width */
+.ao-field[data-label-pos="left"] .ao-label,
+.ao-field[data-label-pos="right"] .ao-label {
   width: 120px;
   flex-shrink: 0;
 }
 
-/* Root container for field structure */
-.rf-root {
-  font-family: Lexend, sans-serif;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* Floating label: absolutely positioned, centers vertically */
+.ao-field[data-label-pos="floating"] .ao-label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.15s ease, font-size 0.15s ease;
+  z-index: 1;
 }
 
-/* Control wrapper: flex row for input and related elements */
-.rf-control {
+/* Floating label: floats up + shrinks on focus or when field has value */
+.ao-field[data-label-pos="floating"]:focus-within .ao-label,
+.ao-field[data-label-pos="floating"].ao-field--has-value .ao-label {
+  top: 8px;
+  transform: translateY(0);
+  font-size: 10px;
+}
+
+/* ── Control wrapper ────────────────────────────────────────────── */
+.ao-control {
+  flex: 1;
   display: flex;
   align-items: center;
-  width: 100%;
   box-sizing: border-box;
   position: relative;
+  border-color: var(--ao-border-color);
+  background: var(--ao-fill);
+  border-radius: var(--ao-radius-top) var(--ao-radius-top) var(--ao-radius-bottom) var(--ao-radius-bottom);
+  border-width: var(--ao-stroke);
+  overflow: hidden;
 }
 
-/* Input element: transparent, inherits font, minimal styling */
-.rf-input {
-  border: none;
+/* ── Variant rules ──────────────────────────────────────────────── */
+.ao-field[data-variant="outlined"] .ao-control {
+  border: var(--ao-stroke) solid var(--ao-border-color);
   background: transparent;
+}
+
+.ao-field[data-variant="outlined-filled"] .ao-control {
+  border: var(--ao-stroke) solid var(--ao-border-color);
+  background: var(--ao-fill);
+}
+
+.ao-field[data-variant="filled"] .ao-control {
+  background: var(--ao-fill);
+  border-style: none;
+}
+
+.ao-field[data-variant="filled-underline"] .ao-control {
+  background: var(--ao-fill);
+  border-style: none;
+  border-bottom: var(--ao-stroke) solid var(--ao-border-color);
+}
+
+.ao-field[data-variant="underline"] .ao-control {
+  background: transparent;
+  border-style: none;
+  border-bottom: var(--ao-stroke) solid var(--ao-border-color);
+}
+
+.ao-field[data-variant="borderless"] .ao-control {
+  background: transparent;
+  border-style: none;
+}
+
+/* ── Size rules ─────────────────────────────────────────────────── */
+.ao-field[data-size="compact"] .ao-control {
+  min-height: 32px;
+}
+
+.ao-field[data-size="standard"] .ao-control {
+  min-height: 44px;
+}
+
+.ao-field[data-size="large"] .ao-control {
+  min-height: 56px;
+}
+
+/* ── Input ──────────────────────────────────────────────────────── */
+.ao-input {
   flex: 1;
-  font-family: inherit;
+  background: transparent;
+  border: none;
   outline: none;
-  font-size: 14px;
-  color: inherit;
+  color: var(--ao-text-color);
+  font: inherit;
+  padding: 0 12px;
   min-width: 0;
+}
+
+/* ── Icon ───────────────────────────────────────────────────────── */
+.ao-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+  color: var(--ao-label-color);
 }
