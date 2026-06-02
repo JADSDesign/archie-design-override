@@ -1,14 +1,12 @@
 // Archie Design Override — full control panel
-// v1.0.0
+// v1.1.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
   var BASE_URL = 'https://jadsdesign.github.io/archie-design-override/override/';
-
-  var VARIANTS = ['outlined', 'outlined-filled', 'filled', 'filled-underline', 'underline', 'borderless'];
 
   // Measured Archie defaults — used by the "Huidig" reset button.
   var ORIGINAL = {
@@ -28,7 +26,7 @@
   // ── IIFE guard — second click removes everything and exits ──────────────
   var existingPanel = document.getElementById(PANEL_ID);
   if (existingPanel) {
-    restoreOriginalVariantClasses();
+    removeLabels();
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
     if (existingStyle) existingStyle.parentNode.removeChild(existingStyle);
@@ -57,111 +55,31 @@
     if (elNode) elNode.parentNode.removeChild(elNode);
   }
 
-  // ── getAllFields ────────────────────────────────────────────────────────
-  function getAllFields() {
-    return Array.prototype.slice.call(document.querySelectorAll('.v-field'));
-  }
-
-  // ── applyVariantClasses — class-swap on every .v-field ──────────────────
-  function applyVariantClasses(variant) {
-    var fields = getAllFields();
-    fields.forEach(function (field) {
-      // Store original variant on first swap.
-      if (!field.dataset.originalVariant) {
-        var orig = null;
-        var classes = field.className.split(/\s+/);
-        classes.forEach(function (c) {
-          if (c.indexOf('v-field--variant-') === 0) {
-            orig = c.replace('v-field--variant-', '');
-          }
-        });
-        if (orig) field.dataset.originalVariant = orig;
-      }
-      // Remove all known variant classes, plus any leftover v-field--variant-*.
-      VARIANTS.forEach(function (v) {
-        field.classList.remove('v-field--variant-' + v);
-      });
-      ['solo', 'plain'].forEach(function (v) {
-        field.classList.remove('v-field--variant-' + v);
-      });
-      field.classList.add('v-field--variant-' + variant);
-    });
-  }
-
-  function restoreOriginalVariantClasses() {
-    var fields = getAllFields();
-    fields.forEach(function (field) {
-      VARIANTS.forEach(function (v) {
-        field.classList.remove('v-field--variant-' + v);
-      });
-      field.classList.remove('v-field--variant-plain');
-      var orig = field.dataset.originalVariant || 'outlined';
-      field.classList.add('v-field--variant-' + orig);
-    });
-  }
-
-  // ── buildVariantCSS — per-variant CSS, all rules retargeted ─────────────
-  function buildVariantCSS(variant) {
-    var lines = [];
-    if (variant === 'outlined') {
-      lines = [
-        '.v-field--variant-outlined { background: transparent !important; }'
-      ];
-    } else if (variant === 'outlined-filled') {
-      // outlined + filled background on .v-field
-      lines = [
-        '.v-field--variant-outlined-filled { background: var(--archie-fill) !important; }'
-      ];
-    } else if (variant === 'filled') {
-      lines = [
-        '.v-field--variant-filled {',
-        '  background: var(--archie-fill) !important;',
-        '  border-radius: 8px 8px 0 0 !important;',
-        '  border-bottom: var(--archie-stroke) solid var(--archie-border) !important;',
-        '}'
-      ];
-    } else if (variant === 'filled-underline') {
-      // filled with only bottom border
-      lines = [
-        '.v-field--variant-filled-underline {',
-        '  background: var(--archie-fill) !important;',
-        '  border-radius: 0 !important;',
-        '  border: none !important;',
-        '  border-bottom: var(--archie-stroke) solid var(--archie-border) !important;',
-        '}'
-      ];
-    } else if (variant === 'underline') {
-      lines = [
-        '.v-field--variant-underline {',
-        '  background: transparent !important;',
-        '  border-radius: 0 !important;',
-        '  border: none !important;',
-        '  border-bottom: var(--archie-stroke) solid var(--archie-border) !important;',
-        '}'
-      ];
-    } else if (variant === 'borderless') {
-      // .v-field--variant-plain: no border / no bg
-      lines = [
-        '.v-field--variant-borderless,',
-        '.v-field--variant-plain {',
-        '  background: transparent !important;',
-        '  border: none !important;',
-        '  box-shadow: none !important;',
-        '}'
-      ];
+  // ── buildResetCSS — hide Vuetify's own field chrome (3R.A2) ─────────────
+  // All rules !important. Hides __outline + __overlay always; hides the native
+  // .v-label EXCEPT when labelPos is floating (3R.B floating exception): in that
+  // one case Vuetify's own floating label must stay visible.
+  function buildResetCSS(cfg) {
+    var pos = (cfg && cfg.labelPos) || 'top';
+    var lines = [
+      '/* Archie Override v' + VERSION + ' — reset */',
+      '.v-field__outline { display: none !important; }',
+      '.v-field__overlay { display: none !important; }'
+    ];
+    if (pos !== 'floating') {
+      lines.push('.v-field__field .v-label { display: none !important; }');
     }
     return lines.join('\n');
   }
 
-  // ── buildCSSFromConfig — single CSS string from the full config ─────────
-  function buildCSSFromConfig(cfg) {
+  // ── buildShellCSS — style .v-field itself as our field (3R.A3 + A4) ─────
+  function buildShellCSS(cfg) {
     var border = cfg.borderColor || '#B3C0DD';
     var fill = cfg.fillColor || '#FFFFFF';
-    var labelColor = cfg.labelColor || '#464646';
     var textColor = cfg.textColor || '#1A1A2E';
     var stroke = (cfg.strokeWidth === 0 || cfg.strokeWidth) ? cfg.strokeWidth : 1;
 
-    // border-radius per corner.
+    // border-radius per corner (radiusPos).
     var radius = (cfg.radius === 0 || cfg.radius) ? cfg.radius : 8;
     var radiusPos = cfg.radiusPos || 'beide';
     var radiusValue;
@@ -175,7 +93,7 @@
       radiusValue = radius + 'px';
     }
 
-    // size → control height + min-height.
+    // size → min-height.
     var height;
     if (cfg.size === 'compact') {
       height = 38;
@@ -187,66 +105,134 @@
       height = 48;
     }
 
+    // ── Variant profile on .v-field (A4) ──────────────────────────────────
+    // Each variant drives border + background. Radius is applied below via
+    // radiusValue, but 'filled' forces top-corner-only radius per spec.
+    var variant = cfg.variant || 'outlined';
+    var bg;            // background of .v-field
+    var borderDecl;    // border declaration line(s)
+    var radiusDecl = '  border-radius: ' + radiusValue + ' !important;';
+
+    if (variant === 'outlined') {
+      // full border, fill = fillColor or white
+      bg = fill;
+      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
+    } else if (variant === 'outlined-filled') {
+      // full border + fillColor
+      bg = fill;
+      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
+    } else if (variant === 'filled') {
+      // no border, fillColor, top-corner radius only
+      bg = fill;
+      borderDecl = '  border: none !important;';
+      radiusDecl = '  border-radius: ' + radius + 'px ' + radius + 'px 0 0 !important;';
+    } else if (variant === 'filled-underline') {
+      // fillColor + bottom border only
+      bg = fill;
+      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
+    } else if (variant === 'underline') {
+      // bottom border only, no fill
+      bg = 'transparent';
+      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
+    } else {
+      // borderless: no border, no fill
+      bg = 'transparent';
+      borderDecl = '  border: none !important;';
+    }
+
     var lines = [
-      '/* Archie Override v' + VERSION + ' */',
-      // Helper vars consumed by buildVariantCSS rules (scoped to fields).
+      '/* Archie Override v' + VERSION + ' — shell */',
       '.v-field {',
-      '  --archie-border: ' + border + ' !important;',
-      '  --archie-fill: ' + fill + ' !important;',
-      '  --archie-stroke: ' + stroke + 'px !important;',
-      '  border-radius: ' + radiusValue + ' !important;',
-      '  --v-input-control-height: ' + height + 'px !important;',
+      '  background: ' + bg + ' !important;',
+      borderDecl,
+      radiusDecl,
       '  min-height: ' + height + 'px !important;',
+      '  box-shadow: none !important;',
       '}',
-      // Fill (background) on the field for non-outlined variants handled in variant CSS;
-      // explicit fill mapping for the field itself.
-      '.v-field { background: ' + fill + ' !important; }',
-      // Label color.
-      '.v-label {',
-      '  color: ' + labelColor + ' !important;',
-      '}',
-      // Text color.
+      // Sensible padding on the native input for the chosen height.
       '.v-field__input {',
       '  color: ' + textColor + ' !important;',
-      '}',
-      // Outlined border color + width (the outline pseudo-elements).
-      '.v-field--variant-outlined .v-field__outline__start,',
-      '.v-field--variant-outlined .v-field__outline__notch,',
-      '.v-field--variant-outlined .v-field__outline__end,',
-      '.v-field--variant-outlined-filled .v-field__outline__start,',
-      '.v-field--variant-outlined-filled .v-field__outline__notch,',
-      '.v-field--variant-outlined-filled .v-field__outline__end {',
-      '  border-color: ' + border + ' !important;',
-      '  border-width: ' + stroke + 'px !important;',
+      '  padding-top: 0 !important;',
+      '  padding-bottom: 0 !important;',
+      '  min-height: ' + height + 'px !important;',
       '}'
     ];
 
-    var variantCSS = buildVariantCSS(cfg.variant || 'outlined');
+    return lines.join('\n');
+  }
 
-    // labelPos — best-effort, must fail silently if Vuetify resists.
-    var labelCSS = '';
-    var pos = cfg.labelPos || 'top';
-    if (pos === 'top') {
-      labelCSS = [
-        '.v-input .v-label {',
-        '  position: static !important;',
-        '  transform: none !important;',
-        '}'
-      ].join('\n');
-    } else if (pos === 'left') {
-      labelCSS = [
-        '.v-input { display: flex !important; align-items: center !important; }',
-        '.v-input .v-label { position: static !important; transform: none !important; margin-right: 8px !important; }'
-      ].join('\n');
-    } else if (pos === 'right') {
-      labelCSS = [
-        '.v-input { display: flex !important; flex-direction: row-reverse !important; align-items: center !important; }',
-        '.v-input .v-label { position: static !important; transform: none !important; margin-left: 8px !important; }'
-      ].join('\n');
-    }
-    // pos === 'floating' leaves Vuetify's native floating behaviour untouched.
+  // ── injectLabels — inject our own label per labelPos (3R.B1) ─────────────
+  function injectLabels(cfg) {
+    var pos = (cfg && cfg.labelPos) || 'top';
+    var labelColor = (cfg && cfg.labelColor) || '#464646';
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
 
-    return [lines.join('\n'), variantCSS, labelCSS].join('\n');
+    inputs.forEach(function (input) {
+      // SKIP search inputs.
+      if (input.className && input.className.indexOf('search-input-wrapper') !== -1) {
+        return;
+      }
+
+      // Read label text from the native .v-label, persist on the .v-input so it
+      // survives if Vuetify later empties .v-label.
+      var nativeLabel = input.querySelector('.v-label');
+      var text = '';
+      if (nativeLabel && nativeLabel.textContent) {
+        text = nativeLabel.textContent.trim();
+      }
+      if (text) {
+        input.dataset.reskinLabelText = text;
+      } else if (input.dataset.reskinLabelText) {
+        text = input.dataset.reskinLabelText;
+      }
+
+      // Strip prior layout helper classes first so a pos change re-flows cleanly.
+      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
+
+      // Floating: do NOT inject our label; remove any prior one so Vuetify's
+      // native floating .v-label remains (reset CSS already kept it visible).
+      if (pos === 'floating') {
+        var prior = input.querySelector('.reskin-label');
+        if (prior) prior.parentNode.removeChild(prior);
+        return;
+      }
+
+      // DEDUP — reuse an existing .reskin-label in this .v-input if present.
+      var labelEl = input.querySelector('.reskin-label');
+      if (!labelEl) {
+        labelEl = document.createElement('div');
+        labelEl.className = 'reskin-label';
+      }
+      labelEl.textContent = text;
+      labelEl.style.color = labelColor;
+
+      if (pos === 'left' || pos === 'links') {
+        labelEl.classList.add('reskin-label-fixed');
+        input.classList.add('reskin-input-left');
+        input.insertBefore(labelEl, input.firstChild);
+      } else if (pos === 'right' || pos === 'rechts') {
+        labelEl.classList.add('reskin-label-fixed');
+        input.classList.add('reskin-input-right');
+        input.insertBefore(labelEl, input.firstChild);
+      } else {
+        // top / boven (default)
+        labelEl.classList.remove('reskin-label-fixed');
+        input.classList.add('reskin-input-top');
+        input.insertBefore(labelEl, input.firstChild);
+      }
+    });
+  }
+
+  // ── removeLabels — strip injected labels + helper classes (3R.B3) ───────
+  function removeLabels() {
+    var labels = Array.prototype.slice.call(document.querySelectorAll('.reskin-label'));
+    labels.forEach(function (lbl) {
+      if (lbl.parentNode) lbl.parentNode.removeChild(lbl);
+    });
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
+    inputs.forEach(function (input) {
+      input.classList.remove('reskin-input-top', 'reskin-input-left', 'reskin-input-right');
+    });
   }
 
   /* ================================================================
@@ -671,9 +657,8 @@
     resetBtn.textContent = '↩ Huidig';
     resetBtn.addEventListener('click', function () {
       setConfig(ORIGINAL);
-      restoreOriginalVariantClasses();
       removeStyle();
-      _notify();
+      removeLabels();
     });
     footer.appendChild(resetBtn);
     aside.appendChild(footer);
@@ -782,9 +767,10 @@
   }
 
   // ── applyConfig — shared apply path for handleChange + observer ─────────
+  // Reset CSS is built per-cfg so the floating-label exception is honoured.
   function applyConfig(cfg) {
-    applyVariantClasses(cfg.variant);
-    injectStyle(buildCSSFromConfig(cfg));
+    injectStyle(buildResetCSS(cfg) + '\n' + buildShellCSS(cfg));
+    injectLabels(cfg);
   }
 
   // ── onChange wiring ─────────────────────────────────────────────────────

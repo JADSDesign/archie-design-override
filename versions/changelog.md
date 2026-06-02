@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.0 — 2026-06-02
+- Phase 3R: **reskin architecture** replaces the v1.0.0 CSS-override apply layer
+- The class-swap + override-on-Vuetify-internals approach failed (double borders, broken radius, impossible label position). Replaced the entire apply layer; kept `makeConfigSidebar`, all panel sections, `injectStyle`, `setConfig`, the IIFE guard, and `window._archieObserver`.
+- **Removed**: `buildVariantCSS`, `applyVariantClasses`, `restoreOriginalVariantClasses`, `buildCSSFromConfig`, `getAllFields`, and the now-unused `VARIANTS` array
+- **`buildResetCSS(cfg)`** — hides Vuetify's own chrome (`.v-field__outline`, `.v-field__overlay`) with `!important`; hides the native `.v-field__field .v-label` EXCEPT when `labelPos === 'floating'` (the floating exception: Vuetify's own floating label stays visible)
+- **`buildShellCSS(cfg)`** — styles `.v-field` itself as our field: 6 variant profiles (outlined / outlined-filled / filled / filled-underline / underline / borderless) drive border + background; radius + radiusPos → `border-radius`; size → `min-height` (compact 38 / standard 48 / large 58 / custom); borderColor / fillColor / strokeWidth on `.v-field`; textColor + padding on `.v-field__input`. Native `.v-field__input` left UNTOUCHED so Vuetify data-binding/validation keeps working.
+- **`injectLabels(cfg)`** — iterates `.v-input` (skips `search-input-wrapper`), reads label text from `.v-label`, persists it on `dataset.reskinLabelText`, and injects a deduped `<div class="reskin-label">` per `labelPos` (top = flex-column, left = flex-row fixed-width, right = flex-row-reverse, floating = no inject). `labelColor` applied inline to `.reskin-label`.
+- **`removeLabels()`** — removes all `.reskin-label` and strips the `.reskin-input-*` flex helper classes
+- **`applyConfig(cfg)`** — `injectStyle(buildResetCSS(cfg) + buildShellCSS(cfg))` then `injectLabels(cfg)`; reset CSS is built per-cfg for the floating exception
+- `panel.css`: added `.reskin-label` base + `.reskin-label-fixed` + `.v-input.reskin-input-{top,left,right}` helpers, intentionally NOT scoped under `#archie-override-panel`
+- "Huidig" reset button: `setConfig(ORIGINAL)` + `removeStyle()` + `removeLabels()` → Archie's own field returns
+- IIFE guard (second click): `removeLabels()` + remove panel + style + css link + disconnect observer
+- `startObserver()` re-runs `applyConfig` on new `.v-field` nodes; `injectLabels` dedup keeps it idempotent (no double labels)
+- Label position / variant / radius now actually work; native input binding preserved (clean single-border field proven in live PoC, 6 fields reskinned, required-validation cleared on typing)
+- Synced `override/panel.{js,css}` → `docs/override/` (byte-identical)
+
 ## v1.0.0 — 2026-06-02
 - Phase 3: full control panel — replaces the v0.2.0 toggle PoC with the v13 config sidebar
 - `panel.js`: ports `makeConfigSidebar(id, title, opts, onChange)` from archie-input-reference-v13.0.html, converted from ES6 to ES5 (var/function only — no const/let/arrow/template literals) for Chrome bookmarklet compatibility
