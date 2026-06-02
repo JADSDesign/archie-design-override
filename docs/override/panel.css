@@ -374,3 +374,74 @@
   color: var(--primary);
   background: var(--primary-bg);
 }
+
+/* ─── Reskin field wrappers (.rf-* namespace) ──────────────────────
+   Used by injectFieldWrappers() to wrap .v-input elements and by
+   makeReskinField() for standalone components. NOT scoped under
+   #archie-override-panel since this is injected into Archie's DOM. */
+
+/* Base wrapper: default top-label layout */
+.rf-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Left-label layout: row with centered items */
+.rf-wrap--left {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Right-label layout: reversed row with centered items */
+.rf-wrap--right {
+  flex-direction: row-reverse;
+  align-items: center;
+}
+
+/* Label base styles */
+.rf-label {
+  font: 500 13px/1.4 Lexend, sans-serif;
+  display: block;
+  color: #464646;
+}
+
+/* Top layout: label above input */
+.rf-wrap--top .rf-label {
+  margin-bottom: 6px;
+}
+
+/* Side layouts: fixed-width label with margin */
+.rf-wrap--left .rf-label,
+.rf-wrap--right .rf-label {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+/* Root container for field structure */
+.rf-root {
+  font-family: Lexend, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Control wrapper: flex row for input and related elements */
+.rf-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Input element: transparent, inherits font, minimal styling */
+.rf-input {
+  border: none;
+  background: transparent;
+  flex: 1;
+  font-family: inherit;
+  outline: none;
+  font-size: 14px;
+  color: inherit;
+  min-width: 0;
+}
