@@ -16,6 +16,15 @@
 - Label position / variant / radius now actually work; native input binding preserved (clean single-border field proven in live PoC, 6 fields reskinned, required-validation cleared on typing)
 - Synced `override/panel.{js,css}` → `docs/override/` (byte-identical)
 
+### Live test — 2026-06-02 (crmonline.archie.nu, Organisatie-aanmaken)
+- ✅ Labelpositie **Links** — labels naast het veld (was onmogelijk met CSS-override)
+- ✅ Labelpositie **Boven** — labels boven het veld
+- ✅ Hoekradius 24 zichtbaar afgerond
+- ✅ Variant Outlined+Fill — één schone rand, GEEN dubbele rand meer
+- ✅ Binding intact — getypte waarde "Reskin Test BV" behouden, native input ongemoeid
+- ✅ "Huidig"-reset — Archie's eigen velden volledig terug
+- ⏳ Niet exhaustief getest (architectuur bewezen via representatieve steekproef): filled-underline/underline/borderless varianten, labelpos rechts/zwevend, elke kleur, stroke
+
 ## v1.0.0 — 2026-06-02
 - Phase 3: full control panel — replaces the v0.2.0 toggle PoC with the v13 config sidebar
 - `panel.js`: ports `makeConfigSidebar(id, title, opts, onChange)` from archie-input-reference-v13.0.html, converted from ES6 to ES5 (var/function only — no const/let/arrow/template literals) for Chrome bookmarklet compatibility
