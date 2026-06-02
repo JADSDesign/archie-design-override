@@ -769,7 +769,7 @@
       if (hasNewField) {
         clearTimeout(_reskinTimer);
         _reskinTimer = setTimeout(function () {
-          applyConfig(sidebar.getConfig());
+          applyConfig(_currentCfg || sidebar.getConfig());
         }, 80);
       }
     });

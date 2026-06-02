@@ -1,13 +1,15 @@
 // Archie Design Override — full control panel
-// v1.2.0
+// v2.0.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '1.2.0';
+  var VERSION = '2.0.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
   var BASE_URL = 'https://jadsdesign.github.io/archie-design-override/override/';
   var _reskinTimer;
+  var AO_FIELD_ATTR = 'data-ao-id';
+  var _currentCfg = null; // used by startObserver (Task 5) to re-apply on DOM mutations
 
   // Measured Archie defaults — used by the "Huidig" reset button.
   var ORIGINAL = {
@@ -27,8 +29,10 @@
   // ── IIFE guard — second click removes everything and exits ──────────────
   var existingPanel = document.getElementById(PANEL_ID);
   if (existingPanel) {
-    // Relies on function-declaration hoisting: removeFieldWrappers is defined below.
-    removeFieldWrappers();
+    // Relies on function-declaration hoisting: removeAOFields is defined below.
+    removeAOFields();
+    var aoTokens = ['--ao-border-color','--ao-fill','--ao-label-color','--ao-text-color','--ao-stroke','--ao-radius-top','--ao-radius-bottom'];
+    aoTokens.forEach(function(t){ document.documentElement.style.removeProperty(t); });
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
     if (existingStyle) existingStyle.parentNode.removeChild(existingStyle);
@@ -57,361 +61,127 @@
     if (elNode) elNode.parentNode.removeChild(elNode);
   }
 
-  // ── buildResetCSS — hide Vuetify's own field chrome (3R.A2) ─────────────
-  // All rules !important. Hides __outline + __overlay always; hides the native
-  // .v-label EXCEPT when labelPos is floating (3R.B floating exception): in that
-  // one case Vuetify's own floating label must stay visible.
-  function buildResetCSS(cfg) {
-    var pos = (cfg && cfg.labelPos) || 'top';
-    var lines = [
-      '/* Archie Override v' + VERSION + ' — reset */',
-      '.v-field__outline { display: none !important; }',
-      '.v-field__overlay { display: none !important; }'
-    ];
-    if (pos !== 'floating') {
-      lines.push('.v-field__field .v-label { display: none !important; }');
-    }
-    return lines.join('\n');
+  // ── buildAOResetCSS — hides Vuetify .v-input elements that have been replaced ─
+  function buildAOResetCSS() {
+    return '.v-input[' + AO_FIELD_ATTR + '] { display: none !important; }';
   }
 
-  // ── buildShellCSS — style .v-field itself as our field (3R.A3 + A4) ─────
-  function buildShellCSS(cfg) {
-    var border = cfg.borderColor || '#B3C0DD';
-    var fill = cfg.fillColor || '#FFFFFF';
-    var textColor = cfg.textColor || '#1A1A2E';
-    var stroke = (cfg.strokeWidth === 0 || cfg.strokeWidth) ? cfg.strokeWidth : 1;
-
-    // border-radius per corner (radiusPos).
-    var radius = (cfg.radius === 0 || cfg.radius) ? cfg.radius : 8;
-    var radiusPos = cfg.radiusPos || 'beide';
-    var radiusValue;
-    if (radiusPos === 'geen') {
-      radiusValue = '0';
-    } else if (radiusPos === 'boven') {
-      radiusValue = radius + 'px ' + radius + 'px 0 0';
-    } else if (radiusPos === 'beneden') {
-      radiusValue = '0 0 ' + radius + 'px ' + radius + 'px';
-    } else {
-      radiusValue = radius + 'px';
-    }
-
-    // size → min-height.
-    var height;
-    if (cfg.size === 'compact') {
-      height = 38;
-    } else if (cfg.size === 'large') {
-      height = 58;
-    } else if (cfg.size === 'custom') {
-      height = cfg.customHeight || 48;
-    } else {
-      height = 48;
-    }
-
-    // ── Variant profile on .v-field (A4) ──────────────────────────────────
-    // Each variant drives border + background. Radius is applied below via
-    // radiusValue, but 'filled' forces top-corner-only radius per spec.
-    var variant = cfg.variant || 'outlined';
-    var bg;            // background of .v-field
-    var borderDecl;    // border declaration line(s)
-    var radiusDecl = '  border-radius: ' + radiusValue + ' !important;';
-
-    if (variant === 'outlined') {
-      // full border, transparent background (differs from outlined-filled)
-      bg = 'transparent';
-      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'outlined-filled') {
-      // full border + fillColor
-      bg = fill;
-      borderDecl = '  border: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'filled') {
-      // no border, fillColor, top-corner radius only
-      bg = fill;
-      borderDecl = '  border: none !important;';
-      radiusDecl = '  border-radius: ' + radius + 'px ' + radius + 'px 0 0 !important;';
-    } else if (variant === 'filled-underline') {
-      // fillColor + bottom border only
-      bg = fill;
-      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
-    } else if (variant === 'underline') {
-      // bottom border only, no fill
-      bg = 'transparent';
-      borderDecl = '  border: none !important;\n  border-bottom: ' + stroke + 'px solid ' + border + ' !important;';
-    } else {
-      // borderless: no border, no fill
-      bg = 'transparent';
-      borderDecl = '  border: none !important;';
-    }
-
-    var lines = [
-      '/* Archie Override v' + VERSION + ' — shell */',
-      '.v-field {',
-      '  background: ' + bg + ' !important;',
-      borderDecl,
-      radiusDecl,
-      '  min-height: ' + height + 'px !important;',
-      '  box-shadow: none !important;',
-      '}',
-      // Zero vertical padding on the native input; height is driven by min-height.
-      '.v-field__input {',
-      '  color: ' + textColor + ' !important;',
-      '  padding-top: 0 !important;',
-      '  padding-bottom: 0 !important;',
-      '  min-height: ' + height + 'px !important;',
-      '}',
-      // Prevent autocomplete fields from breaking due to the min-height above.
-      '.v-autocomplete .v-field__input { min-height: auto !important; }'
-    ];
-
-    return lines.join('\n');
+  // ── removeAOFields — remove all .ao-field elements and restore .v-input ──
+  function removeAOFields() {
+    var aoFields = Array.prototype.slice.call(document.querySelectorAll('.ao-field'));
+    aoFields.forEach(function (aoField) {
+      if (aoField.parentNode) aoField.parentNode.removeChild(aoField);
+    });
+    // Restore display on all hidden .v-input elements.
+    var hiddenInputs = Array.prototype.slice.call(
+      document.querySelectorAll('.v-input[' + AO_FIELD_ATTR + ']')
+    );
+    hiddenInputs.forEach(function (vInput) {
+      vInput.style.display = '';
+      vInput.removeAttribute(AO_FIELD_ATTR);
+    });
   }
 
-  // ── injectFieldWrappers — wrap each .v-input with .rf-wrap + external label ─
-  // Replaces the old injectLabels approach. Instead of inserting elements INTO
-  // .v-input (which conflicts with Vuetify's internal flex/grid layout), we
-  // wrap the .v-input in a new .rf-wrap sibling container and place the label
-  // OUTSIDE .v-input as a flex sibling. This preserves Vuetify's internal DOM.
-  function injectFieldWrappers(cfg) {
-    removeFieldWrappers();              // tear down first, always
-    var pos = (cfg && cfg.labelPos) || 'top';
-    if (pos === 'floating') { return; } // floating = Vuetify's own label, done
-    var labelColor = (cfg && cfg.labelColor) || '#464646';
-    var inputs = Array.prototype.slice.call(document.querySelectorAll('.v-input'));
+  // ── injectAOFields — inject in-flow .ao-field after each .v-input ─────────
+  // Hides .v-input and inserts our own .ao-field directly after it in the DOM.
+  // Vuetify's input stays in the DOM for future value-bridging.
+  function injectAOFields(cfg) {
+    removeAOFields();              // tear down first, always
+    _currentCfg = cfg;
 
-    inputs.forEach(function (input) {
+    var variant = (cfg && cfg.variant) || 'outlined';
+    var labelPos = (cfg && cfg.labelPos) || 'top';
+    var size = (cfg && cfg.size) || 'standard';
+
+    var inputs = Array.prototype.slice.call(
+      document.querySelectorAll('.v-input')
+    );
+
+    inputs.forEach(function (vInput) {
+      // Only process .v-input elements that contain a .v-field (filters color pickers etc.)
+      if (!vInput.querySelector('.v-field')) { return; }
+
       // Skip search inputs.
-      if (input.className && input.className.indexOf('search-input-wrapper') !== -1) {
+      if (vInput.className && vInput.className.indexOf('search-input-wrapper') !== -1) {
         return;
       }
 
-      // Read label text from native .v-label; persist on .v-input for resilience.
-      var nativeLabel = input.querySelector('.v-label');
+      // Read label text from native .v-label; persist on .v-input for re-injection resilience.
+      var nativeLabel = vInput.querySelector('.v-label');
       var text = '';
       if (nativeLabel && nativeLabel.textContent) {
         text = nativeLabel.textContent.trim();
       }
       if (text) {
-        input.dataset.reskinLabelText = text;
-      } else if (input.dataset.reskinLabelText) {
-        text = input.dataset.reskinLabelText;
+        vInput.dataset.aoLabel = text;
+      } else if (vInput.dataset.aoLabel) {
+        text = vInput.dataset.aoLabel;
       }
 
-      // No text and no label to show — skip.
-      if (!text) {
-        return;
+      // Read optional prepend icon SVG from .v-field__prepend-inner.
+      var prependInner = vInput.querySelector('.v-field__prepend-inner');
+      var iconSVG = '';
+      if (prependInner) {
+        var svgEl = prependInner.querySelector('svg');
+        if (svgEl) { iconSVG = svgEl.outerHTML; }
       }
 
-      // Build the wrapper div.
-      var rfWrap = document.createElement('div');
-      rfWrap.className = 'rf-wrap';
+      // Assign a unique ID to this .v-input for cross-referencing.
+      if (!vInput.dataset.aoId) {
+        vInput.dataset.aoId = 'ao-' + Math.random().toString(36).substr(2, 9);
+      }
+      var uid = vInput.dataset.aoId;
 
-      // Build the label div.
-      var rfLabel = document.createElement('div');
-      rfLabel.className = 'rf-label';
-      rfLabel.textContent = text;
-      rfLabel.style.color = labelColor;
+      // Hide the native .v-input.
+      vInput.style.display = 'none'; // redundant with buildAOResetCSS, maar garandeert hide vóór style-tag geladen is
 
-      // Apply wrapper layout class + label sizing per position.
-      if (pos === 'left' || pos === 'links') {
-        rfWrap.className = 'rf-wrap rf-wrap--left';
-        rfWrap.style.cssText = 'display:flex;flex-direction:row;align-items:center;';
-        rfLabel.style.width = '120px';
-        rfLabel.style.flexShrink = '0';
-        rfLabel.style.marginRight = '12px';
-      } else if (pos === 'right' || pos === 'rechts') {
-        rfWrap.className = 'rf-wrap rf-wrap--right';
-        rfWrap.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:center;';
-        rfLabel.style.width = '120px';
-        rfLabel.style.flexShrink = '0';
-        rfLabel.style.marginLeft = '12px';
-      } else {
-        // top / boven (default)
-        rfWrap.className = 'rf-wrap rf-wrap--top';
-        rfWrap.style.cssText = 'display:flex;flex-direction:column;';
-        rfLabel.style.marginBottom = '6px';
+      // Build .ao-field.
+      var aoField = document.createElement('div');
+      aoField.className = 'ao-field';
+      aoField.setAttribute('data-variant', variant);
+      aoField.setAttribute('data-label-pos', labelPos);
+      // floating: CSS-gedrag (label zweeft omhoog bij focus) wordt geïmplementeerd in Task 3 CSS
+      aoField.setAttribute('data-size', size);
+      aoField.setAttribute('data-ao-source-id', uid);
+
+      // Build .ao-label.
+      if (text) {
+        var aoLabel = document.createElement('div');
+        aoLabel.className = 'ao-label';
+        aoLabel.textContent = text;
+        aoField.appendChild(aoLabel);
       }
 
-      // Insert wrapper in place of the .v-input, then move .v-input inside.
-      input.parentNode.insertBefore(rfWrap, input);
-      rfWrap.appendChild(rfLabel);
-      rfWrap.appendChild(input);
+      // Build .ao-control.
+      var aoControl = document.createElement('div');
+      aoControl.className = 'ao-control';
 
-      // Mark as wrapped to prevent double-wrapping on re-runs.
-      input.dataset.rfWrapped = '1';
+      // Optionally build .ao-icon.
+      if (iconSVG) {
+        var aoIcon = document.createElement('span');
+        aoIcon.className = 'ao-icon';
+        aoIcon.innerHTML = iconSVG;
+        aoControl.appendChild(aoIcon);
+      }
+
+      // Build input.ao-input.
+      var aoInput = document.createElement('input');
+      aoInput.className = 'ao-input';
+      aoInput.type = 'text';
+      aoControl.appendChild(aoInput);
+
+      aoField.appendChild(aoControl);
+
+      // Insert .ao-field directly after the hidden .v-input (in-flow).
+      vInput.insertAdjacentElement('afterend', aoField);
     });
   }
 
-  // ── removeFieldWrappers — unwrap all .rf-wrap, restore .v-input in place ─
-  function removeFieldWrappers() {
-    var wraps = Array.prototype.slice.call(document.querySelectorAll('.rf-wrap'));
-    wraps.forEach(function (rfWrap) {
-      var vInput = rfWrap.querySelector('.v-input');
-      if (vInput) {
-        if (rfWrap.parentNode) rfWrap.parentNode.insertBefore(vInput, rfWrap);
-        delete vInput.dataset.rfWrapped;
-      }
-      if (rfWrap.parentNode) rfWrap.parentNode.removeChild(rfWrap);
-    });
-    // Clear rfWrapped on any .v-input that Vue moved out of a wrapper (no longer inside rfWrap).
-    var allInputs = document.querySelectorAll('.v-input[data-rf-wrapped]');
-    Array.prototype.forEach.call(allInputs, function (inp) {
-      delete inp.dataset.rfWrapped;
-    });
-    // Also remove any standalone .rf-label elements that may exist outside wrappers.
-    var orphans = Array.prototype.slice.call(document.querySelectorAll('.rf-label'));
-    orphans.forEach(function (lbl) {
-      if (lbl.parentNode) lbl.parentNode.removeChild(lbl);
-    });
-  }
-
-  /* ================================================================
-     makeReskinField(cfg)
-     Standalone factory — creates a pure HTML field independent of
-     Vuetify. For demo/preview purposes. Returns .rf-root HTMLElement.
-     cfg keys mirror the _cfg keys in makeConfigSidebar.
-  ================================================================ */
-  function makeReskinField(cfg) {
-    cfg = cfg || {};
-    var variant = cfg.variant || 'outlined';
-    var labelPos = cfg.labelPos || 'top';
-    var radius = (cfg.radius === 0 || cfg.radius) ? cfg.radius : 8;
-    var radiusPos = cfg.radiusPos || 'beide';
-    var size = cfg.size || 'standard';
-    var customHeight = cfg.customHeight || 48;
-    var label = cfg.label || '';
-    var placeholder = cfg.placeholder || '';
-    var value = cfg.value || '';
-    var borderColor = cfg.borderColor || '#B3C0DD';
-    var fillColor = cfg.fillColor || '#FFFFFF';
-    var labelColor = cfg.labelColor || '#464646';
-    var textColor = cfg.textColor || '#1A1A2E';
-    var strokeWidth = (cfg.strokeWidth === 0 || cfg.strokeWidth) ? cfg.strokeWidth : 1;
-
-    // Resolve border-radius value from radiusPos.
-    var radiusValue;
-    if (radiusPos === 'geen') {
-      radiusValue = '0';
-    } else if (radiusPos === 'boven') {
-      radiusValue = radius + 'px ' + radius + 'px 0 0';
-    } else if (radiusPos === 'beneden') {
-      radiusValue = '0 0 ' + radius + 'px ' + radius + 'px';
-    } else {
-      radiusValue = radius + 'px';
-    }
-
-    // Resolve min-height from size.
-    var height;
-    if (size === 'compact') {
-      height = 38;
-    } else if (size === 'large') {
-      height = 58;
-    } else if (size === 'custom') {
-      height = customHeight;
-    } else {
-      height = 48;
-    }
-
-    // Resolve variant-specific border + background inline styles.
-    var bg;
-    var borderStyle;
-    var controlRadiusValue = radiusValue;
-
-    if (variant === 'outlined') {
-      bg = 'transparent';
-      borderStyle = strokeWidth + 'px solid ' + borderColor;
-    } else if (variant === 'outlined-filled') {
-      bg = fillColor;
-      borderStyle = strokeWidth + 'px solid ' + borderColor;
-    } else if (variant === 'filled') {
-      bg = fillColor;
-      borderStyle = 'none';
-      controlRadiusValue = radius + 'px ' + radius + 'px 0 0';
-    } else if (variant === 'filled-underline') {
-      bg = fillColor;
-      borderStyle = 'none';
-    } else if (variant === 'underline') {
-      bg = 'transparent';
-      borderStyle = 'none';
-    } else {
-      // borderless
-      bg = 'transparent';
-      borderStyle = 'none';
-    }
-
-    // Build .rf-control (the styled field shell).
-    var rfControl = document.createElement('div');
-    rfControl.className = 'rf-control';
-    rfControl.style.background = bg;
-    rfControl.style.border = borderStyle;
-    if (variant === 'filled-underline' || variant === 'underline') {
-      rfControl.style.borderBottom = strokeWidth + 'px solid ' + borderColor;
-    }
-    rfControl.style.borderRadius = controlRadiusValue;
-    rfControl.style.minHeight = height + 'px';
-    rfControl.style.boxSizing = 'border-box';
-    rfControl.style.display = 'flex';
-    rfControl.style.alignItems = 'center';
-    rfControl.style.padding = '0 12px';
-
-    // Build .rf-input (the actual text input inside .rf-control).
-    var rfInput = document.createElement('input');
-    rfInput.type = 'text';
-    rfInput.className = 'rf-input';
-    rfInput.placeholder = placeholder;
-    rfInput.value = value;
-    rfInput.readOnly = false;
-    rfInput.style.color = textColor;
-    rfInput.style.fontSize = '14px';
-    rfInput.style.fontFamily = 'inherit';
-    rfInput.style.border = 'none';
-    rfInput.style.outline = 'none';
-    rfInput.style.background = 'transparent';
-    rfInput.style.width = '100%';
-    rfControl.appendChild(rfInput);
-
-    // Build .rf-root — the outermost container that holds label + control.
-    var rfRoot = document.createElement('div');
-    rfRoot.className = 'rf-root';
-
-    // For floating: no label element — just return control inside root.
-    if (labelPos === 'floating') {
-      rfRoot.appendChild(rfControl);
-      return rfRoot;
-    }
-
-    // Build .rf-label for non-floating positions.
-    var rfLabel = document.createElement('div');
-    rfLabel.className = 'rf-label';
-    rfLabel.textContent = label;
-    rfLabel.style.color = labelColor;
-
-    if (labelPos === 'top' || labelPos === 'boven') {
-      rfRoot.style.cssText = 'display:flex;flex-direction:column;';
-      rfLabel.style.marginBottom = '6px';
-      rfRoot.appendChild(rfLabel);
-      rfRoot.appendChild(rfControl);
-    } else if (labelPos === 'left' || labelPos === 'links') {
-      rfRoot.style.cssText = 'display:flex;flex-direction:row;align-items:center;';
-      rfLabel.style.width = '120px';
-      rfLabel.style.flexShrink = '0';
-      rfLabel.style.marginRight = '12px';
-      rfRoot.appendChild(rfLabel);
-      rfRoot.appendChild(rfControl);
-    } else if (labelPos === 'right' || labelPos === 'rechts') {
-      rfRoot.style.cssText = 'display:flex;flex-direction:row-reverse;align-items:center;';
-      rfLabel.style.width = '120px';
-      rfLabel.style.flexShrink = '0';
-      rfLabel.style.marginLeft = '12px';
-      rfRoot.appendChild(rfControl);
-      rfRoot.appendChild(rfLabel);
-    } else {
-      // Fallback: treat as top.
-      rfRoot.style.cssText = 'display:flex;flex-direction:column;';
-      rfLabel.style.marginBottom = '6px';
-      rfRoot.appendChild(rfLabel);
-      rfRoot.appendChild(rfControl);
-    }
-
-    return rfRoot;
+  /**
+   * bridgeValue(aoField)
+   * A-bridge TODO: sync ao-input.value -> native input + dispatch events
+   */
+  function bridgeValue(aoField) { // eslint-disable-line no-unused-vars
   }
 
   /* ================================================================
@@ -837,7 +607,7 @@
     resetBtn.addEventListener('click', function () {
       setConfig(ORIGINAL);
       removeStyle();
-      removeFieldWrappers();
+      removeAOFields();
     });
     footer.appendChild(resetBtn);
     aside.appendChild(footer);
@@ -945,11 +715,39 @@
     return { el: aside, getConfig: getConfig, setConfig: setConfig, open: open, close: close, toggle: toggle };
   }
 
+  // ── applyAOTokens — set CSS custom properties from config ────────────────
+  function applyAOTokens(cfg) {
+    if (!cfg) return;
+    var root = document.documentElement;
+
+    root.style.setProperty('--ao-border-color', cfg.borderColor || '#B3C0DD');
+    root.style.setProperty('--ao-fill', cfg.fillColor || '#FFFFFF');
+    root.style.setProperty('--ao-label-color', cfg.labelColor || '#464646');
+    root.style.setProperty('--ao-text-color', cfg.textColor || '#1A1A2E');
+    root.style.setProperty('--ao-stroke', ((cfg.strokeWidth !== undefined && cfg.strokeWidth !== null) ? cfg.strokeWidth : 1) + 'px');
+
+    // Calculate --ao-radius-top based on radiusPos
+    var radiusValue = (cfg.radius !== undefined && cfg.radius !== null) ? cfg.radius : 8;
+    var radiusPos = cfg.radiusPos || 'beide';
+    var radiusTop = '0px';
+    var radiusBottom = '0px';
+
+    if (radiusPos === 'boven' || radiusPos === 'beide') {
+      radiusTop = radiusValue + 'px';
+    }
+    if (radiusPos === 'beneden' || radiusPos === 'beide') {
+      radiusBottom = radiusValue + 'px';
+    }
+
+    root.style.setProperty('--ao-radius-top', radiusTop);
+    root.style.setProperty('--ao-radius-bottom', radiusBottom);
+  }
+
   // ── applyConfig — shared apply path for handleChange + observer ─────────
-  // Reset CSS is built per-cfg so the floating-label exception is honoured.
   function applyConfig(cfg) {
-    injectStyle(buildResetCSS(cfg) + '\n' + buildShellCSS(cfg));
-    injectFieldWrappers(cfg);
+    applyAOTokens(cfg);
+    injectStyle(buildAOResetCSS());
+    injectAOFields(cfg);
   }
 
   // ── onChange wiring ─────────────────────────────────────────────────────
@@ -971,7 +769,7 @@
       if (hasNewField) {
         clearTimeout(_reskinTimer);
         _reskinTimer = setTimeout(function () {
-          applyConfig(sidebar.getConfig());
+          applyConfig(_currentCfg || sidebar.getConfig());
         }, 80);
       }
     });
