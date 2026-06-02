@@ -19,6 +19,17 @@
 - Synced `override/panel.{js,css}` → `docs/override/` (GitHub Pages serves docs/ only)
 - ⚠️ labelPos is fragile/beta — Vuetify's internal label positioning may override the injected CSS; the panel does not throw if so
 
+### Live test — 2026-06-02 (crmonline.archie.nu, Organisatie-aanmaken formulier)
+- ✅ Paneel rendert links met alle secties (Veldtype, Labelpositie beta, Hoekradius, Grootte, Kleuren ×4, Stroke)
+- ✅ Randkleur #FF0000 → rode randen op alle `.v-field__outline` velden (kleur-picker + hex-sync bewezen)
+- ✅ Hoekradius 24 zichtbaar op alle velden
+- ✅ Veldtype class-swap naar Filled verandert veldstijl zichtbaar
+- ✅ "Huidig"-reset herstelt variant, radius, kleuren naar Archie-default
+- ✅ MutationObserver: bij heropenen formulier krijgen nieuwe velden direct de actieve override (SPA-durability)
+- ✅ Tweede bookmarklet-klik: paneel + override volledig verwijderd, Archie hersteld
+- ⏳ Niet apart getest (wiring identiek aan randkleur, hoge zekerheid): fillColor, labelColor, textColor, stroke-dikte
+- ⚠️ labelPos (beta) niet apart geverifieerd — fragiel by design
+
 ## v0.2.0 — 2026-06-02
 - Phase 2 PoC: CSS injection validated on live Archie CRM
 - `panel.js`: injectStyle, buildOriginalCSS, buildProposalCSS, buildToggleButton, startObserver
