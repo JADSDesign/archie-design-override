@@ -505,9 +505,14 @@
   min-height: 56px;
 }
 
+.ao-field[data-size="custom"] .ao-control {
+  min-height: var(--ao-custom-height, 48px);
+}
+
 /* ── Input ──────────────────────────────────────────────────────── */
 .ao-input {
   flex: 1;
+  align-self: stretch;
   background: transparent;
   border: none;
   outline: none;
@@ -515,6 +520,29 @@
   font: inherit;
   padding: 0 12px;
   min-width: 0;
+  min-height: inherit;
+}
+
+/* ── Label in border ────────────────────────────────────────────── */
+/* Label sits on the top border line of .ao-control */
+.ao-field[data-label-in-border="true"] .ao-control {
+  overflow: visible;
+  padding-top: 10px;
+}
+
+.ao-field[data-label-in-border="true"] .ao-label {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  transform: translateY(-50%);
+  background: var(--ao-label-bg, #FFFFFF);
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ao-label-color);
+  white-space: nowrap;
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* ── Icon ───────────────────────────────────────────────────────── */
