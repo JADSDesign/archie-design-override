@@ -1,8 +1,8 @@
 // Archie Design Override — full control panel
-// v2.0.0
+// v2.1.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '2.0.0';
+  var VERSION = '2.1.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
@@ -20,7 +20,7 @@
     size: 'standard',
     customHeight: 48,
     borderColor: '#B3C0DD',
-    fillColor: '#FFFFFF',
+    fillColor: '#F5F7F9',
     labelColor: '#464646',
     textColor: '#1A1A2E',
     strokeWidth: 1
@@ -31,7 +31,7 @@
   if (existingPanel) {
     // Relies on function-declaration hoisting: removeAOFields is defined below.
     removeAOFields();
-    var aoTokens = ['--ao-border-color','--ao-fill','--ao-label-color','--ao-text-color','--ao-stroke','--ao-radius-top','--ao-radius-bottom'];
+    var aoTokens = ['--ao-border-color','--ao-fill','--ao-label-color','--ao-text-color','--ao-stroke','--ao-radius-top','--ao-radius-bottom','--ao-custom-height','--ao-label-bg'];
     aoTokens.forEach(function(t){ document.documentElement.style.removeProperty(t); });
     existingPanel.parentNode.removeChild(existingPanel);
     var existingStyle = document.getElementById(STYLE_ID);
@@ -92,6 +92,7 @@
     var variant = (cfg && cfg.variant) || 'outlined';
     var labelPos = (cfg && cfg.labelPos) || 'top';
     var size = (cfg && cfg.size) || 'standard';
+    var labelInBorder = !!(cfg && cfg.labelInBorder);
 
     var inputs = Array.prototype.slice.call(
       document.querySelectorAll('.v-input')
@@ -140,16 +141,18 @@
       aoField.className = 'ao-field';
       aoField.setAttribute('data-variant', variant);
       aoField.setAttribute('data-label-pos', labelPos);
-      // floating: CSS-gedrag (label zweeft omhoog bij focus) wordt geïmplementeerd in Task 3 CSS
       aoField.setAttribute('data-size', size);
       aoField.setAttribute('data-ao-source-id', uid);
+      if (labelInBorder) { aoField.setAttribute('data-label-in-border', 'true'); }
 
       // Build .ao-label.
+      var aoLabel = null;
       if (text) {
-        var aoLabel = document.createElement('div');
+        aoLabel = document.createElement('div');
         aoLabel.className = 'ao-label';
         aoLabel.textContent = text;
-        aoField.appendChild(aoLabel);
+        // label-in-border: label goes INSIDE .ao-control (appended after control is built)
+        if (!labelInBorder) { aoField.appendChild(aoLabel); }
       }
 
       // Build .ao-control.
@@ -169,6 +172,9 @@
       aoInput.className = 'ao-input';
       aoInput.type = 'text';
       aoControl.appendChild(aoInput);
+
+      // label-in-border: prepend label inside .ao-control so it sits on the border line.
+      if (labelInBorder && aoLabel) { aoControl.insertBefore(aoLabel, aoControl.firstChild); }
 
       aoField.appendChild(aoControl);
 
@@ -203,7 +209,8 @@
       size: 'standard',
       customHeight: 48,
       borderColor: '#B3C0DD',
-      fillColor: '#FFFFFF',
+      fillColor: '#F5F7F9',
+      labelInBorder: false,
       labelColor: '#464646',
       textColor: '#1A1A2E',
       strokeWidth: 1,
@@ -315,6 +322,27 @@
         groupL.appendChild(lbl);
       });
       secL.appendChild(groupL);
+
+      // Label in rand toggle
+      var libRow = document.createElement('div');
+      libRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px;';
+      var libToggle = document.createElement('input');
+      libToggle.type = 'checkbox';
+      libToggle.id = 'labelInBorder-' + id;
+      libToggle.checked = !!_cfg.labelInBorder;
+      libToggle.style.cssText = 'width:14px;height:14px;accent-color:var(--primary);cursor:pointer;';
+      libToggle.addEventListener('change', function () {
+        _cfg.labelInBorder = libToggle.checked;
+        _notify();
+      });
+      var libLabel = document.createElement('label');
+      libLabel.htmlFor = 'labelInBorder-' + id;
+      libLabel.textContent = 'Label in rand';
+      libLabel.style.cssText = 'font:500 12px/1 system-ui;color:#464646;cursor:pointer;';
+      libRow.appendChild(libToggle);
+      libRow.appendChild(libLabel);
+      secL.appendChild(libRow);
+
       aside.appendChild(secL);
     }
 
@@ -511,6 +539,27 @@
       rowEl.appendChild(swatch);
       rowEl.appendChild(hex);
       colorList.appendChild(rowEl);
+
+      // Quick fill swatches: alleen tonen na de Vulling rij
+      if (row.key === 'fillColor') {
+        var swatchRow = document.createElement('div');
+        swatchRow.className = 'config-fill-presets';
+        swatchRow.style.cssText = 'display:flex;gap:6px;margin-top:4px;padding-left:60px;';
+        [['#F5F7F9','Grijs'], ['#FFFFFF','Wit']].forEach(function(preset) {
+          var btn = document.createElement('button');
+          btn.textContent = preset[1];
+          btn.title = preset[0];
+          btn.style.cssText = 'font:500 11px/1 system-ui;padding:3px 8px;border-radius:4px;border:1px solid #B3C0DD;background:' + preset[0] + ';cursor:pointer;color:#464646;';
+          btn.addEventListener('click', function () {
+            _cfg.fillColor = preset[0];
+            swatch.value = preset[0];
+            hex.value = preset[0];
+            _notify();
+          });
+          swatchRow.appendChild(btn);
+        });
+        colorList.appendChild(swatchRow);
+      }
     });
     colorSection.appendChild(colorList);
     aside.appendChild(colorSection);
@@ -636,6 +685,7 @@
         customHeight: _cfg.customHeight,
         borderColor: _cfg.borderColor,
         fillColor: _cfg.fillColor,
+        labelInBorder: _cfg.labelInBorder,
         labelColor: _cfg.labelColor,
         textColor: _cfg.textColor,
         strokeWidth: _cfg.strokeWidth,
@@ -660,6 +710,7 @@
       if (newCfg.customHeight !== undefined) _cfg.customHeight = newCfg.customHeight;
       if (newCfg.borderColor !== undefined) _cfg.borderColor = newCfg.borderColor;
       if (newCfg.fillColor !== undefined) _cfg.fillColor = newCfg.fillColor;
+      if (newCfg.labelInBorder !== undefined) _cfg.labelInBorder = newCfg.labelInBorder;
       if (newCfg.labelColor !== undefined) _cfg.labelColor = newCfg.labelColor;
       if (newCfg.textColor !== undefined) _cfg.textColor = newCfg.textColor;
       if (newCfg.strokeWidth !== undefined) _cfg.strokeWidth = newCfg.strokeWidth;
@@ -721,7 +772,9 @@
     var root = document.documentElement;
 
     root.style.setProperty('--ao-border-color', cfg.borderColor || '#B3C0DD');
-    root.style.setProperty('--ao-fill', cfg.fillColor || '#FFFFFF');
+    root.style.setProperty('--ao-fill', cfg.fillColor || '#F5F7F9');
+    var customH = (cfg.customHeight !== undefined && cfg.customHeight !== null) ? cfg.customHeight : 48;
+    root.style.setProperty('--ao-custom-height', customH + 'px');
     root.style.setProperty('--ao-label-color', cfg.labelColor || '#464646');
     root.style.setProperty('--ao-text-color', cfg.textColor || '#1A1A2E');
     root.style.setProperty('--ao-stroke', ((cfg.strokeWidth !== undefined && cfg.strokeWidth !== null) ? cfg.strokeWidth : 1) + 'px');
