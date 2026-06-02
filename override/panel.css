@@ -1,1 +1,35 @@
-/* Archie Override Panel — styles populated in Phase 2 */
+#archie-override-panel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 2px solid #592B59;
+  background: #fff;
+  color: #592B59;
+  box-shadow: 0 2px 16px rgba(89, 43, 89, 0.2);
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+#archie-override-panel:hover {
+  background: #592B59;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(89, 43, 89, 0.35);
+}
+
+#archie-override-panel[data-mode="proposal"] {
+  background: #592B59;
+  color: #fff;
+}
+
+#archie-override-panel[data-mode="proposal"]:hover {
+  background: #fff;
+  color: #592B59;
+}
