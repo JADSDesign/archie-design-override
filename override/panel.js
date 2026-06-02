@@ -604,7 +604,7 @@
     resetBtn.addEventListener('click', function () {
       setConfig(ORIGINAL);
       removeStyle();
-      removeFieldWrappers();
+      removeAOFields();
     });
     footer.appendChild(resetBtn);
     aside.appendChild(footer);
