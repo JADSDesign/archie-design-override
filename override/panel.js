@@ -1,8 +1,8 @@
 // Archie Design Override — full control panel
-// v2.1.0
+// v2.2.0
 // Vanilla ES5 only (var/function) for Chrome bookmarklet compatibility.
 (function () {
-  var VERSION = '2.1.0';
+  var VERSION = '2.2.0';
   var PANEL_ID = 'archie-override-panel';
   var STYLE_ID = 'archie-override-style';
   var CSS_LINK_ID = 'archie-override-css';
@@ -173,6 +173,8 @@
       aoInput.type = 'text';
       aoControl.appendChild(aoInput);
 
+      aoInput.addEventListener('input', function () { bridgeValue(aoField); });
+
       // label-in-border: prepend label inside .ao-control so it sits on the border line.
       if (labelInBorder && aoLabel) { aoControl.insertBefore(aoLabel, aoControl.firstChild); }
 
@@ -183,11 +185,18 @@
     });
   }
 
-  /**
-   * bridgeValue(aoField)
-   * A-bridge TODO: sync ao-input.value -> native input + dispatch events
-   */
-  function bridgeValue(aoField) { // eslint-disable-line no-unused-vars
+  function bridgeValue(aoField) {
+    var sourceId = aoField.getAttribute('data-ao-source-id');
+    if (!sourceId) { return; }
+    var vInput = document.querySelector('.v-input[data-ao-id="' + sourceId + '"]');
+    if (!vInput) { return; }
+    var nativeInput = vInput.querySelector('input');
+    if (!nativeInput) { return; }
+    var aoInput = aoField.querySelector('.ao-input');
+    if (!aoInput) { return; }
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(nativeInput, aoInput.value);
+    nativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   /* ================================================================
